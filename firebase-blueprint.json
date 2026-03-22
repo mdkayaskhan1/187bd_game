@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user balance and basic info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "balance"]
+    },
+    "Bet": {
+      "title": "Bet History",
+      "description": "Records of individual bets",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "game": { "type": "string", "enum": ["crash", "mines", "slots"] },
+        "betAmount": { "type": "number" },
+        "multiplier": { "type": "number" },
+        "payout": { "type": "number" },
+        "win": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "game", "betAmount", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Transaction Record",
+      "description": "Deposit and withdrawal records",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"] },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "method": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "type", "amount", "status", "timestamp", "method"]
+    },
+    "Profile": {
+      "title": "Public Profile",
+      "description": "Publicly accessible user info for leaderboard",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "balance": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["balance"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "Public user profiles"
+    },
+    "/bets/{betId}": {
+      "schema": "Bet",
+      "description": "Global bet history"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transactions"
+    }
+  }
+}
