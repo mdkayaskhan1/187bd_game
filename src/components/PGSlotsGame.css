@@ -1,0 +1,43 @@
+.pg-slots-game {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    padding: 20px;
+}
+
+.pg-slots-header {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.pg-slots-reel {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+}
+
+.pg-slots-icon {
+    width: 60px;
+    height: 60px;
+}
+
+.pg-slots-button {
+    background-color: #28a745;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.pg-slots-button:hover {
+    background-color: #218838;
+}
+
+.pg-slots-result {
+    text-align: center;
+    font-size: 20px;
+    margin-top: 20px;
+}
