@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowDownCircle, ArrowUpCircle, CreditCard, Smartphone, Landmark, Copy, CheckCircle2, History, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '../types';
-import { db, collection, query, where, orderBy, onSnapshot } from '../firebase';
+import { db, collection, query, where, orderBy, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -63,6 +63,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         ...doc.data()
       })) as TransactionRecord[];
       setHistory(records);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
     return () => unsubscribe();

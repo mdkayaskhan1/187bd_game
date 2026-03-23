@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dice5, Info, History as HistoryIcon, Wallet, Settings2, Trophy } from 'lucide-react';
-import { auth, db, collection, addDoc, serverTimestamp } from '../firebase';
+import { auth, db, collection, addDoc, serverTimestamp, handleFirestoreError, OperationType } from '../firebase';
 import { cn } from '../types';
 import { soundService } from '../services/soundService';
+import { jackpotService } from '../services/jackpotService';
 import { GameHistory } from './GameHistory';
 import { GameRules } from './GameRules';
 import { BetConfirmation } from './BetConfirmation';
@@ -23,6 +24,7 @@ export const DiceGame: React.FC<DiceProps> = ({ balance, onWin, onLoss }) => {
   const [win, setWin] = useState<boolean | null>(null);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [history, setHistory] = useState<number[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
@@ -51,8 +53,9 @@ export const DiceGame: React.FC<DiceProps> = ({ balance, onWin, onLoss }) => {
         isOver,
         timestamp: serverTimestamp()
       });
+      setHistory(prev => [roll, ...prev].slice(0, 20));
     } catch (error) {
-      console.error("Error logging bet", error);
+      handleFirestoreError(error, OperationType.WRITE, 'bets');
     }
   };
 
@@ -69,7 +72,10 @@ export const DiceGame: React.FC<DiceProps> = ({ balance, onWin, onLoss }) => {
     setWin(null);
     soundService.play('bet');
     soundService.play('spin'); // Reusing spin sound
-
+    
+    // Contribute to jackpot
+    jackpotService.contribute(betAmount);
+    
     timerRef.current = setTimeout(() => {
       const roll = Math.floor(Math.random() * 10001) / 100; // 0.00 to 100.00
       setLastRoll(roll);
@@ -91,179 +97,164 @@ export const DiceGame: React.FC<DiceProps> = ({ balance, onWin, onLoss }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-      {/* Left Sidebar - Controls */}
-      <div className="lg:col-span-1 space-y-6">
-        <div className="glass-panel p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Bet Settings</h2>
-            <button 
-              onClick={() => setIsRulesOpen(true)}
-              className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors"
-            >
-              <Info size={18} />
-            </button>
+    <div className="flex flex-col h-full bg-casino-bg pt-16">
+      {/* Top: Game History (Story) */}
+      <div className="px-4 py-2 bg-black/20 border-b border-white/5 flex items-center gap-2 overflow-x-auto no-scrollbar min-h-[40px]">
+        {history.map((h, i) => (
+          <div 
+            key={i} 
+            className={cn(
+              "px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap",
+              (isOver ? h > target : h < target) ? "bg-casino-accent/20 text-casino-accent border border-casino-accent/30" : "bg-red-500/20 text-red-500 border border-red-500/30"
+            )}
+          >
+            {h.toFixed(2)}
           </div>
+        ))}
+      </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
-                <span>Bet Amount</span>
-                <span>Balance: {balance.toLocaleString()} BDT</span>
-              </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono font-bold text-white outline-none focus:border-casino-accent/50 transition-colors"
+      <div className="flex-1 relative flex flex-col overflow-y-auto no-scrollbar">
+        {/* Middle: Game Display */}
+        <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-black p-4 min-h-[400px]">
+          <GameRules game="dice" isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+
+          <BetConfirmation
+            isOpen={isConfirmOpen}
+            onConfirm={rollDice}
+            onCancel={() => setIsConfirmOpen(false)}
+            betAmount={betAmount}
+            potentialWin={`${potentialWin.toFixed(2)} BDT`}
+            gameName="Dice"
+          />
+
+          <div className="w-full max-w-2xl space-y-12">
+            {/* Roll Result */}
+            <div className="text-center">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={lastRoll ?? 'idle'}
+                  initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  className={cn(
+                    "text-8xl md:text-9xl font-black font-mono tracking-tighter",
+                    win === true ? "text-casino-accent" : win === false ? "text-red-500" : "text-white"
+                  )}
+                >
+                  {lastRoll?.toFixed(2) ?? '00.00'}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Slider Control */}
+            <div className="relative px-4">
+              <div className="h-4 w-full bg-black/40 rounded-full border border-white/10 relative overflow-hidden">
+                <div 
+                  className={cn(
+                    "absolute top-0 bottom-0 transition-all duration-300",
+                    isOver ? "right-0 bg-casino-accent/20" : "left-0 bg-casino-accent/20"
+                  )}
+                  style={{ width: `${isOver ? 100 - target : target}%` }}
                 />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <button onClick={() => setBetAmount(Math.max(0, betAmount / 2))} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-[10px] font-bold">1/2</button>
-                  <button onClick={() => setBetAmount(betAmount * 2)} className="px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-[10px] font-bold">2x</button>
-                </div>
+                <motion.div 
+                  animate={{ left: `${target}%` }}
+                  className="absolute top-0 bottom-0 w-1 bg-white z-10 shadow-[0_0_10px_white]"
+                />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
-                <span>Target & Mode</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setIsOver(true)}
-                  className={cn(
-                    "py-2 rounded-lg text-xs font-bold transition-all",
-                    isOver ? "bg-casino-accent text-black" : "bg-white/5 text-slate-400 hover:bg-white/10"
-                  )}
-                >
-                  Roll Over
-                </button>
-                <button
-                  onClick={() => setIsOver(false)}
-                  className={cn(
-                    "py-2 rounded-lg text-xs font-bold transition-all",
-                    !isOver ? "bg-casino-accent text-black" : "bg-white/5 text-slate-400 hover:bg-white/10"
-                  )}
-                >
-                  Roll Under
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
-                <span>Multiplier: <span className="text-white">{multiplier.toFixed(2)}x</span></span>
-                <span>Win Chance: <span className="text-white">{winChance.toFixed(2)}%</span></span>
-              </div>
+              
               <input
                 type="range"
                 min="2"
                 max="98"
-                step="1"
                 value={target}
                 onChange={(e) => setTarget(Number(e.target.value))}
-                className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-casino-accent"
+                disabled={rolling}
+                className="absolute inset-0 w-full h-4 opacity-0 cursor-pointer z-20"
               />
-              <div className="flex justify-between text-[10px] font-bold text-slate-600">
-                <span>2</span>
-                <span>{target}</span>
-                <span>98</span>
+
+              <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <span>0</span>
+                <span>25</span>
+                <span>50</span>
+                <span>75</span>
+                <span>100</span>
               </div>
             </div>
 
-            <button
-              onClick={rollDice}
-              disabled={rolling || balance < betAmount}
-              className="w-full btn-primary py-4 flex items-center justify-center gap-3 text-lg mt-4"
-            >
-              <Dice5 className={rolling ? "animate-spin" : ""} />
-              {rolling ? "Rolling..." : "Roll Dice"}
-            </button>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Multiplier</div>
+                <div className="text-xl font-mono font-bold text-white mt-1">{multiplier.toFixed(4)}x</div>
+              </div>
+              <div className="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Win Chance</div>
+                <div className="text-xl font-mono font-bold text-white mt-1">{winChance.toFixed(2)}%</div>
+              </div>
+              <div className="bg-black/40 border border-white/5 rounded-xl p-4 text-center">
+                <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Profit</div>
+                <div className="text-xl font-mono font-bold text-casino-accent mt-1">{(potentialWin - betAmount).toFixed(2)}</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Game Area */}
-      <div className="lg:col-span-3 space-y-8">
-        <div className="glass-panel h-[400px] relative flex flex-col items-center justify-center overflow-hidden">
-          {/* Background Decorative Elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-casino-accent/5 blur-[100px] rounded-full" />
-          </div>
-
-          <div className="relative z-10 flex flex-col items-center gap-8">
-            <motion.div
-              key={lastRoll}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={cn(
-                "text-8xl font-black tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]",
-                win === true ? "text-casino-success" : win === false ? "text-casino-danger" : "text-white"
-              )}
-            >
-              {lastRoll !== null ? lastRoll.toFixed(2) : "00.00"}
-            </motion.div>
-
-            <div className="w-full max-w-md h-4 bg-black/40 rounded-full relative overflow-hidden border border-white/5">
-              <div 
-                className={cn(
-                  "absolute top-0 bottom-0 transition-all duration-300",
-                  isOver ? "right-0 bg-casino-success/20" : "left-0 bg-casino-success/20"
-                )}
-                style={{ width: `${winChance}%` }}
-              />
-              <motion.div
-                animate={{ left: `${lastRoll ?? 50}%` }}
-                className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white] z-20"
-              />
-            </div>
-
-            <div className="flex gap-8 text-center">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Target</div>
-                <div className="text-2xl font-black">{isOver ? `> ${target}` : `< ${target}`}</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Profit</div>
-                <div className={cn("text-2xl font-black", win ? "text-casino-success" : "text-white")}>
-                  {win ? `+${(potentialWin - betAmount).toFixed(2)}` : "0.00"}
+        {/* Bottom: Betting Panel */}
+        <div className="bg-casino-card border-t border-white/5 p-4 md:p-6">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Bet Settings */}
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bet Amount</label>
+                  <div className="mt-1 relative">
+                    <input
+                      type="number"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(Math.max(1, Number(e.target.value)))}
+                      disabled={rolling}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-mono"
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                      <button onClick={() => setBetAmount(prev => prev / 2)} className="bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] font-bold">1/2</button>
+                      <button onClick={() => setBetAmount(prev => prev * 2)} className="bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-[10px] font-bold">2x</button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="w-32">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Roll Type</label>
+                  <button
+                    onClick={() => setIsOver(!isOver)}
+                    disabled={rolling}
+                    className="w-full mt-1 bg-black/40 border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between text-sm font-bold"
+                  >
+                    <span>{isOver ? 'OVER' : 'UNDER'}</span>
+                    <Settings2 size={16} className="text-casino-accent" />
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Result Overlay */}
-          <AnimatePresence>
-            {win !== null && !rolling && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className={cn(
-                  "absolute bottom-8 px-6 py-2 rounded-full font-black text-sm uppercase tracking-widest border",
-                  win ? "bg-casino-success/10 border-casino-success/20 text-casino-success" : "bg-casino-danger/10 border-casino-danger/20 text-casino-danger"
-                )}
+            {/* Action Button */}
+            <div className="flex items-center">
+              <button
+                onClick={rollDice}
+                disabled={rolling || balance < betAmount}
+                className="bg-casino-accent hover:bg-casino-accent-hover disabled:opacity-50 text-black w-full py-6 rounded-2xl text-2xl font-black shadow-[0_0_50px_rgba(0,255,153,0.4)] transition-all active:scale-95 flex items-center justify-center gap-3"
               >
-                {win ? "You Won!" : "Better Luck Next Time"}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {rolling ? (
+                  <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Dice5 size={28} />
+                    <span>ROLL DICE</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-
-        <GameHistory game="dice" />
       </div>
-
-      <GameRules game="dice" isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
-      
-      <BetConfirmation
-        isOpen={isConfirmOpen}
-        onConfirm={rollDice}
-        onCancel={() => setIsConfirmOpen(false)}
-        betAmount={betAmount}
-        potentialWin={`${potentialWin.toFixed(2)} BDT`}
-        gameName="Dice"
-      />
     </div>
   );
 };

@@ -92,13 +92,26 @@ const RULES_CONTENT = {
     paytable: 'Multipliers are higher at the edges and lower in the center. Higher risk levels increase the edge multipliers.',
     tips: 'The center slots usually return less than your bet, while the edges can return massive wins!'
   },
+  aviator: {
+    title: 'Aviator Game Rules',
+    description: 'Predict how high the plane will fly before it flies away!',
+    howToPlay: [
+      'Enter your bet amount and click "Bet".',
+      'Watch the multiplier increase as the plane takes off.',
+      'Click "Cash Out" before the plane flies away.',
+      'If the plane flies away before you cash out, you lose your bet.'
+    ],
+    paytable: 'Your payout is your bet multiplied by the multiplier at the moment you cash out.',
+    tips: 'The plane can fly away at any moment, even right after takeoff!'
+  },
   home: { title: '', description: '', howToPlay: [], paytable: '', tips: '' },
   leaderboard: { title: '', description: '', howToPlay: [], paytable: '', tips: '' }
 };
 
 export const GameRules: React.FC<GameRulesProps> = ({ game, isOpen, onClose }) => {
-  const content = RULES_CONTENT[game];
-  if (!content.title) return null;
+  const content = RULES_CONTENT[game as keyof typeof RULES_CONTENT];
+  
+  if (!content || !content.title) return null;
 
   return (
     <AnimatePresence>

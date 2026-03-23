@@ -54,7 +54,7 @@ const BetItem = memo(({ bet }: { bet: BetRecord }) => (
 BetItem.displayName = 'BetItem';
 
 interface GameHistoryProps {
-  game: 'crash' | 'mines' | 'slots' | 'dice' | 'limbo' | 'plinko';
+  game: 'crash' | 'mines' | 'slots' | 'dice' | 'limbo' | 'plinko' | 'aviator';
 }
 
 type StatusFilter = 'all' | 'win' | 'loss';
@@ -97,14 +97,20 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ game }) => {
     const q = query(collection(db, 'bets'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const history = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as BetRecord[];
+      const history = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter(bet => (bet as any).timestamp !== null) as BetRecord[];
       setBets(history);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'bets');
+      if (error.message.includes('Missing or insufficient permissions')) {
+        console.warn("Game history: Waiting for permissions/auth...");
+      } else {
+        handleFirestoreError(error, OperationType.LIST, 'bets');
+      }
       setLoading(false);
     });
 

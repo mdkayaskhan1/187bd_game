@@ -54,9 +54,42 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["balance"]
+    },
+    "Jackpot": {
+      "title": "Progressive Jackpot",
+      "description": "Global jackpot pool",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "lastWinner": { "type": "string" },
+        "lastWinAmount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Real-time chat message",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "text", "timestamp"]
     }
   },
   "firestore": {
+    "/chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Global chat messages"
+    },
+    "/jackpot/global": {
+      "schema": "Jackpot",
+      "description": "Global progressive jackpot pool"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User profile data"

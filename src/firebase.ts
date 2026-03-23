@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, User as FirebaseUser } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -12,6 +12,7 @@ export {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged, 
+  updateProfile,
   doc, 
   setDoc, 
   getDoc, 
@@ -27,7 +28,8 @@ export {
   getDocFromServer,
   deleteDoc,
   getDocs,
-  Timestamp
+  Timestamp,
+  increment
 };
 
 export enum OperationType {

@@ -17,4 +17,35 @@ export interface GameState {
   }>;
 }
 
-export type GameType = 'crash' | 'mines' | 'slots' | 'dice' | 'limbo' | 'plinko' | 'home' | 'leaderboard';
+export interface Bet {
+  id: string;
+  uid: string;
+  game: string;
+  betAmount: number;
+  multiplier: number;
+  payout: number;
+  win: boolean;
+  timestamp: any;
+}
+
+export type GameType = 
+  | 'home' 
+  | 'promotion' 
+  | 'invite' 
+  | 'leaderboard' 
+  | 'chat'
+  | 'member_center'
+  | 'crash' 
+  | 'mines' 
+  | 'slots' 
+  | 'dice' 
+  | 'limbo' 
+  | 'plinko' 
+  | 'aviator' 
+  | 'live'
+  | 'sports'
+  | 'cards'
+  | 'esports'
+  | 'fish'
+  | 'lottery'
+  | 'cockfight';

@@ -42,12 +42,20 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.get('uid', request.auth.uid) == request.auth.uid &&
-             data.balance is number && data.balance >= 0;
+             data.balance is number && data.balance >= 0 &&
+             (!('email' in data) || data.email is string) &&
+             (!('displayName' in data) || data.displayName is string);
+    }
+
+    function isValidProfile(data) {
+      return (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 200000)) &&
+             (!('balance' in data) || data.balance is number);
     }
 
     function isValidBet(data) {
       return data.get('uid', request.auth.uid) == request.auth.uid &&
-             data.game in ['crash', 'mines', 'slots', 'plinko', 'tower'] &&
+             data.game in ['crash', 'mines', 'slots', 'plinko', 'tower', 'dice', 'limbo', 'aviator', 'slots2'] &&
              data.betAmount is number && data.betAmount > 0 &&
              data.timestamp is timestamp;
     }
@@ -56,24 +64,33 @@ service cloud.firestore {
       return data.get('uid', request.auth.uid) == request.auth.uid &&
              data.type in ['deposit', 'withdrawal'] &&
              data.amount is number && data.amount > 0 &&
-             data.status in ['pending', 'completed', 'failed'] &&
+             data.status in ['pending', 'completed', 'failed', 'rejected'] &&
              data.method is string &&
              data.timestamp is timestamp &&
              (!('accountNumber' in data) || data.accountNumber is string);
     }
 
+    function isValidChatMessage(data) {
+      return data.uid == request.auth.uid &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 500 &&
+             data.timestamp is timestamp &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('photoURL' in data) || data.photoURL is string);
+    }
+
     function isAdmin() {
       return isAuthenticated() &&
-        (
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin') ||
-          (request.auth.token.email == "mdkayaskhan923@gmail.com" && request.auth.token.email_verified == true)
-        );
+        (request.auth.token.email == "mdkayaskhan923@gmail.com" && request.auth.token.email_verified == true);
     }
 
     // ===============================================================
     // Match Rules
     // ===============================================================
+
+    match /jackpot/global {
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -84,11 +101,11 @@ service cloud.firestore {
     match /profiles/{userId} {
       // Public profiles for leaderboard
       allow read: if true;
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidProfile(request.resource.data);
     }
 
     match /bets/{betId} {
-      allow read: if isDocOwner() || isAdmin();
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidBet(request.resource.data);
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -101,6 +118,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    match /chat/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     match /test/connection {
       allow read: if true;
     }
