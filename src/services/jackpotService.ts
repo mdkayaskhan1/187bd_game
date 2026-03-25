@@ -73,14 +73,21 @@ export const jackpotService = {
       const msg = `<b>🏆 JACKPOT WINNER! 🏆</b>\n\n` +
         `👤 User: ${winnerName}\n` +
         `💰 Amount: ${winAmount.toFixed(2)} BDT\n` +
-        `🕒 Time: ${new Date().toLocaleString()}\n\n` +
+        `🕒 Time: ${new Date(Date.now()).toLocaleString()}\n\n` +
         `Congratulations to our newest champion!`;
       sendTelegramNotification(msg);
       
       // Dispatch custom event for UI to show win modal
-      window.dispatchEvent(new CustomEvent('jackpotWin', { 
-        detail: { amount: winAmount, winner: winnerName } 
-      }));
+      let event;
+      try {
+        event = new CustomEvent('jackpotWin', { 
+          detail: { amount: winAmount, winner: winnerName } 
+        });
+      } catch (e) {
+        event = document.createEvent('CustomEvent');
+        event.initCustomEvent('jackpotWin', true, true, { amount: winAmount, winner: winnerName });
+      }
+      window.dispatchEvent(event);
       
     } catch (error) {
       console.error("Error triggering jackpot win:", error);

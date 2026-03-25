@@ -35,6 +35,10 @@ export type GameType =
   | 'leaderboard' 
   | 'chat'
   | 'member_center'
+  | 'wallet'
+  | 'bet_history'
+  | 'support'
+  | 'terms'
   | 'crash' 
   | 'mines' 
   | 'slots' 
@@ -48,4 +52,8 @@ export type GameType =
   | 'esports'
   | 'fish'
   | 'lottery'
-  | 'cockfight';
+  | 'cockfight'
+  | 'slots_cat'
+  | 'sports_cat'
+  | 'lottery_cat'
+  | 'esports_cat';

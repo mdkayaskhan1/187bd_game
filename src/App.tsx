@@ -1,7 +1,12 @@
-import * as React from 'react';
-import { useState, useEffect, useRef, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, ErrorInfo, ReactNode, Component } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 import { 
+  Bell,
+  FileText,
+  History as HistoryIcon,
+  Dices,
+  ArrowRight,
   LayoutDashboard, 
   TrendingUp, 
   Bomb, 
@@ -51,10 +56,22 @@ import {
   collection,
   handleFirestoreError,
   OperationType,
-  FirebaseUser
+  FirebaseUser,
+  increment,
+  updateDoc
 } from './firebase';
 import { Chat } from './components/Chat';
 import { MemberCenter } from './components/MemberCenter';
+import { WalletPage } from './components/WalletPage';
+import { DailyBonus } from './components/DailyBonus';
+import { BetHistory } from './components/BetHistory';
+import { Promotions } from './components/Promotions';
+import { Invite } from './components/Invite';
+import { SupportPage } from './components/SupportPage';
+import { TermsPage } from './components/TermsPage';
+import { Notifications } from './components/Notifications';
+import { Leaderboard } from './components/Leaderboard';
+import { LiveBets } from './components/LiveBets';
 import { CrashGame } from './components/CrashGame';
 import { AviatorGame } from './components/AviatorGame';
 import { MinesGame } from './components/MinesGame';
@@ -62,7 +79,7 @@ import { SlotsGame } from './components/SlotsGame';
 import { DiceGame } from './components/DiceGame';
 import { LimboGame } from './components/LimboGame';
 import { PlinkoGame } from './components/PlinkoGame';
-import { Leaderboard } from './components/Leaderboard';
+import { Login } from './components/Login';
 import { TransactionModal } from './components/TransactionModal';
 import { GameType, cn } from './types';
 import { sendTelegramNotification } from './services/notificationService';
@@ -79,6 +96,62 @@ interface ErrorBoundaryState {
 }
 
 import { JackpotDisplay } from './components/JackpotDisplay';
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null,
+    errorInfo: null
+  };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error, errorInfo: null };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    this.setState({ error, errorInfo });
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-casino-bg flex items-center justify-center p-4">
+          <div className="glass-panel p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-4">
+              Oops! Something went wrong.
+            </h2>
+            <p className="text-slate-400 text-sm mb-8">
+              We encountered an unexpected error. Please try refreshing the page or contact support if the problem persists.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-primary w-full py-4 text-lg font-black uppercase tracking-wider"
+            >
+              Refresh Page
+            </button>
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <div className="mt-8 p-4 bg-black/40 rounded-lg text-left overflow-auto max-h-40">
+                <p className="text-red-500 text-xs font-mono break-all">
+                  {this.state.error.toString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -104,11 +177,33 @@ export default function App() {
     type: 'deposit'
   });
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isDailyBonusOpen, setIsDailyBonusOpen] = useState(false);
   const [jackpotWin, setJackpotWin] = useState<{ amount: number; winner: string } | null>(null);
 
   useEffect(() => {
     const handleJackpotWin = (event: any) => {
       setJackpotWin(event.detail);
+      
+      // Celebratory effect
+      const duration = 5 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+
       // Auto-close after 10 seconds
       setTimeout(() => setJackpotWin(null), 10000);
     };
@@ -144,8 +239,14 @@ export default function App() {
             const initialData = {
               uid: firebaseUser.uid,
               displayName: firebaseUser.displayName,
+              username: firebaseUser.email?.split('@')[0] || `user_${firebaseUser.uid.slice(0, 5)}`,
+              photoURL: firebaseUser.photoURL,
               email: firebaseUser.email,
               balance: 1000,
+              settings: {
+                notifications: true,
+                theme: 'dark'
+              },
               createdAt: serverTimestamp()
             };
             await setDoc(userDocRef, initialData);
@@ -153,6 +254,7 @@ export default function App() {
             // Initial profile sync
             await setDoc(profileDocRef, {
               displayName: firebaseUser.displayName,
+              username: initialData.username,
               photoURL: firebaseUser.photoURL,
               balance: 1000,
               updatedAt: serverTimestamp()
@@ -160,13 +262,15 @@ export default function App() {
             
             setBalance(1000);
           } else {
-            setBalance(userDoc.data().balance);
+            const userData = userDoc.data();
+            setBalance(userData.balance);
             
             // Ensure profile is in sync
             await setDoc(profileDocRef, {
               displayName: firebaseUser.displayName,
+              username: userData.username || firebaseUser.email?.split('@')[0],
               photoURL: firebaseUser.photoURL,
-              balance: userDoc.data().balance,
+              balance: userData.balance,
               updatedAt: serverTimestamp()
             }, { merge: true });
           }
@@ -244,7 +348,10 @@ export default function App() {
     if (!user || balance === null || isNaN(profit)) return;
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      await setDoc(userDocRef, { balance: balance + profit }, { merge: true });
+      await updateDoc(userDocRef, { 
+        balance: increment(profit),
+        xp: increment(Math.floor(profit / 10))
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
     }
@@ -254,17 +361,20 @@ export default function App() {
     if (!user || balance === null || isNaN(amount)) return;
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      await setDoc(userDocRef, { balance: Math.max(0, balance - amount) }, { merge: true });
+      await updateDoc(userDocRef, { 
+        balance: increment(-amount),
+        xp: increment(Math.floor(amount / 10))
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
     }
   };
 
-  const handleTransaction = async (amount: number, method: string, accountNumber: string) => {
+  const handleTransaction = async (amount: number, method: string, accountNumber: string, transactionId?: string, typeOverride?: 'deposit' | 'withdrawal') => {
     if (!user || balance === null) return;
     
-    const type = transactionModal.type;
-    const newBalance = type === 'deposit' ? balance + amount : balance - amount;
+    const type = typeOverride || transactionModal.type;
+    const balanceChange = type === 'deposit' ? amount : -amount;
     
     try {
       // 1. Log transaction
@@ -274,22 +384,28 @@ export default function App() {
         amount,
         method,
         accountNumber,
+        transactionId: transactionId || null,
         status: 'completed',
         timestamp: serverTimestamp()
       });
 
       // 2. Update balance
       const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, { balance: newBalance }, { merge: true });
+      await updateDoc(userDocRef, { balance: increment(balanceChange) });
 
-      // 3. Send Telegram Notification
+      // 3. Update public profile
+      const profileDocRef = doc(db, 'profiles', user.uid);
+      await setDoc(profileDocRef, { balance: balance + balanceChange, updatedAt: serverTimestamp() }, { merge: true });
+
+      // 4. Send Telegram Notification
       const alertMsg = `<b>💰 New ${type.toUpperCase()} Request</b>\n\n` +
         `👤 User: ${user.displayName}\n` +
         `📧 Email: ${user.email}\n` +
         `💵 Amount: ${amount} BDT\n` +
         `💳 Method: ${method.toUpperCase()}\n` +
         `🔢 Account: ${accountNumber}\n` +
-        `🕒 Time: ${new Date().toLocaleString()}`;
+        (transactionId ? `🆔 Txn ID: ${transactionId}\n` : '') +
+        `🕒 Time: ${new Date(Date.now()).toLocaleString()}`;
       
       await sendTelegramNotification(alertMsg);
       soundService.play('transaction');
@@ -301,10 +417,13 @@ export default function App() {
 
   const navItems = [
     { id: 'home', label: 'হোম পেজ', icon: LayoutDashboard },
+    { id: 'wallet', label: 'ওয়ালেট', icon: Wallet },
+    { id: 'bet_history', label: 'বেট হিস্ট্রি', icon: HistoryIcon },
     { id: 'promotion', label: 'প্রমোশন', icon: Gift },
     { id: 'invite', label: 'আমন্ত্রণ', icon: Users },
     { id: 'leaderboard', label: 'লিডার বোর্ড', icon: Trophy },
-    { id: 'chat', label: 'চ্যাট', icon: MessageSquare },
+    { id: 'support', label: 'সাপোর্ট', icon: MessageSquare },
+    { id: 'terms', label: 'শর্তাবলী', icon: FileText },
     { id: 'member_center', label: 'সদস্য কেন্দ্র', icon: UserCircle },
   ];
 
@@ -339,33 +458,12 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <div className="h-screen bg-casino-bg flex items-center justify-center p-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-12 max-w-md w-full text-center flex flex-col items-center gap-8"
-        >
-          <div className="w-20 h-20 bg-casino-accent rounded-2xl flex items-center justify-center text-black font-black text-4xl shadow-lg shadow-casino-accent/20">9</div>
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter mb-2">999BD CASINO</h1>
-            <p className="text-slate-400">Login to start your winning streak</p>
-          </div>
-          <button 
-            onClick={handleLogin}
-            className="btn-primary w-full py-4 flex items-center justify-center gap-3 text-lg"
-          >
-            <LogIn size={24} />
-            Sign in with Google
-          </button>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Provably Fair Gaming</p>
-        </motion.div>
-      </div>
-    );
+    return <Login />;
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-casino-bg overflow-hidden">
+    <ErrorBoundary>
+      <div className="flex flex-col md:flex-row h-screen bg-casino-bg overflow-hidden">
           {/* Sidebar (Desktop) */}
           {!isGameActive && (
             <motion.aside
@@ -435,6 +533,26 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2 md:gap-4">
+                <button
+                  onClick={() => setIsDailyBonusOpen(true)}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-casino-accent/10 hover:bg-casino-accent/20 border border-casino-accent/20 rounded-xl text-casino-accent transition-all group"
+                >
+                  <Gift size={18} className="group-hover:rotate-12 transition-transform" />
+                  <span className="text-xs font-black uppercase tracking-widest">ডেইলি বোনাস</span>
+                </button>
+
+                <button
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className={cn(
+                    "p-2 rounded-full transition-all relative",
+                    isNotificationsOpen ? "bg-casino-accent text-black shadow-[0_0_15px_rgba(0,255,153,0.4)]" : "bg-white/5 text-slate-500 hover:bg-white/10"
+                  )}
+                  title="Notifications"
+                >
+                  <Bell size={20} />
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-casino-accent rounded-full animate-pulse" />
+                </button>
+
                 <button
                   onClick={() => setIsChatOpen(!isChatOpen)}
                   className={cn(
@@ -568,39 +686,71 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8"
+                    className="space-y-12"
                   >
-                    {[
-                      { id: 'aviator', label: 'Aviator', icon: Plane, color: 'from-red-500/20', accent: 'text-red-500', desc: 'Predict the flight' },
-                      { id: 'slots_cat', label: 'Slot', icon: Coins, color: 'from-casino-success/20', accent: 'text-casino-success', desc: 'Spin and Win' },
-                      { id: 'live', label: 'Live', icon: PlayCircle, color: 'from-red-500/20', accent: 'text-red-500', desc: 'Live Casino' },
-                      { id: 'sports', label: 'Sports', icon: SportsIcon, color: 'from-blue-500/20', accent: 'text-blue-500', desc: 'Sports Betting' },
-                      { id: 'cards', label: 'Cards', icon: CreditCard, color: 'from-purple-500/20', accent: 'text-purple-500', desc: 'Card Games' },
-                      { id: 'esports', label: 'E-sports', icon: Gamepad, color: 'from-orange-500/20', accent: 'text-orange-500', desc: 'Pro Gaming' },
-                      { id: 'fish', label: 'Fish', icon: Fish, color: 'from-cyan-500/20', accent: 'text-cyan-500', desc: 'Fishing Games' },
-                      { id: 'lottery', label: 'Lottery', icon: Ticket, color: 'from-yellow-500/20', accent: 'text-yellow-500', desc: 'Big Jackpots' },
-                      { id: 'cockfight', label: 'Cockfight', icon: Bird, color: 'from-red-700/20', accent: 'text-red-700', desc: 'Traditional' },
-                    ].map((cat) => (
-                      <motion.button
-                        key={cat.id}
-                        whileHover={{ scale: 1.02, y: -5 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setActiveGame(cat.id as any)}
-                        className="group relative aspect-square glass-panel overflow-hidden transition-all hover:border-white/20 hover:shadow-[0_0_50px_rgba(0,0,0,0.5)]"
-                      >
-                        <div className={cn(
-                          "absolute -top-10 -right-10 w-32 h-32 blur-[60px] opacity-0 group-hover:opacity-30 transition-opacity duration-500 rounded-full bg-gradient-to-br",
-                          cat.color, "to-transparent"
-                        )} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-10" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 p-4 text-center">
-                          <cat.icon size={40} className={cn("mb-4 group-hover:scale-110 transition-transform duration-500", cat.accent)} />
-                          <h3 className="text-xl font-black uppercase tracking-tighter group-hover:text-white transition-colors">
-                            {cat.label}
-                          </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+                      {[
+                        { id: 'aviator', label: 'Aviator', icon: Plane, color: 'from-red-500/20', accent: 'text-red-500', desc: 'Predict the flight' },
+                        { id: 'slots_cat', label: 'Slot', icon: Coins, color: 'from-casino-success/20', accent: 'text-casino-success', desc: 'Spin and Win' },
+                        { id: 'live', label: 'Live', icon: PlayCircle, color: 'from-red-500/20', accent: 'text-red-500', desc: 'Live Casino' },
+                        { id: 'sports', label: 'Sports', icon: SportsIcon, color: 'from-blue-500/20', accent: 'text-blue-500', desc: 'Sports Betting' },
+                        { id: 'cards', label: 'Cards', icon: CreditCard, color: 'from-purple-500/20', accent: 'text-purple-500', desc: 'Card Games' },
+                        { id: 'mines', label: 'Mines', icon: Bomb, color: 'from-orange-500/20', accent: 'text-orange-500', desc: 'Find the gems' },
+                        { id: 'crash', label: 'Crash', icon: TrendingUp, color: 'from-casino-accent/20', accent: 'text-casino-accent', desc: 'Multiply your bet' },
+                        { id: 'dice', label: 'Dice', icon: Dices, color: 'from-blue-400/20', accent: 'text-blue-400', desc: 'Roll the dice' },
+                      ].map((game) => (
+                        <button
+                          key={game.id}
+                          onClick={() => setActiveGame(game.id as GameType)}
+                          className={cn(
+                            "relative group aspect-[4/3] rounded-3xl overflow-hidden glass-panel border-white/5 hover:border-white/20 transition-all hover:scale-[1.02] active:scale-[0.98]",
+                            "bg-gradient-to-br from-white/5 to-transparent"
+                          )}
+                        >
+                          <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500", game.color)} />
+                          <div className="absolute inset-0 p-6 flex flex-col justify-between">
+                            <div className={cn("w-12 h-12 rounded-2xl bg-black/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-500", game.accent)}>
+                              <game.icon size={24} />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-black uppercase tracking-tighter mb-1">{game.label}</h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-slate-300 transition-colors">{game.desc}</p>
+                            </div>
+                          </div>
+                          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowRight size={20} className="text-white" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <div className="lg:col-span-2 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+                            <TrendingUp className="text-casino-accent" size={24} />
+                            লাইভ বেটস
+                          </h2>
+                          <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                            <div className="w-2 h-2 rounded-full bg-casino-success animate-pulse" />
+                            রিয়েল-টাইম আপডেট
+                          </div>
                         </div>
-                      </motion.button>
-                    ))}
+                        <div className="h-[400px]">
+                          <LiveBets game={activeGame} />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-6">
+                        <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+                          <Trophy className="text-yellow-500" size={24} />
+                          টপ প্লেয়ার্স
+                        </h2>
+                        <div className="glass-panel p-4 h-[400px] overflow-y-auto custom-scrollbar">
+                          <Leaderboard />
+                        </div>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 
@@ -677,27 +827,44 @@ export default function App() {
                 )}
 
                 {activeGame === 'promotion' && (
-                  <motion.div key="promotion" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-12 text-center">
-                    <Gift size={80} className="mx-auto mb-6 text-casino-accent" />
-                    <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter">প্রমোশন</h2>
-                    <p className="text-slate-400">নতুন নতুন অফার এবং বোনাস পেতে আমাদের সাথে থাকুন।</p>
-                  </motion.div>
+                  <Promotions />
                 )}
 
                 {activeGame === 'invite' && (
-                  <motion.div key="invite" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel p-12 text-center">
-                    <Users size={80} className="mx-auto mb-6 text-casino-accent" />
-                    <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter">আমন্ত্রণ</h2>
-                    <p className="text-slate-400">বন্ধুদের আমন্ত্রণ জানান এবং কমিশন আয় করুন।</p>
-                  </motion.div>
+                  <Invite userId={user.uid} />
+                )}
+
+                {activeGame === 'leaderboard' && (
+                  <Leaderboard />
                 )}
 
                 {activeGame === 'member_center' && (
                   <MemberCenter 
                     user={user} 
                     balance={balance} 
-                    onLogout={handleLogout} 
+                    onLogout={handleLogout}
+                    onNavigate={(page) => setActiveGame(page as any)}
                   />
+                )}
+
+                {activeGame === 'wallet' && (
+                  <WalletPage 
+                    balance={balance ?? 0}
+                    userId={user.uid}
+                    onConfirm={handleTransaction}
+                  />
+                )}
+
+                {activeGame === 'bet_history' && (
+                  <BetHistory userId={user.uid} />
+                )}
+
+                {activeGame === 'support' && (
+                  <SupportPage />
+                )}
+
+                {activeGame === 'terms' && (
+                  <TermsPage />
                 )}
 
                 {activeGame === 'crash' && (
@@ -757,23 +924,14 @@ export default function App() {
               {navItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    if (item.id === 'chat') {
-                      setIsChatOpen(true);
-                    } else {
-                      setActiveGame(item.id as GameType);
-                    }
-                  }}
+                  onClick={() => setActiveGame(item.id as GameType)}
                   className={cn(
-                    "flex flex-col items-center gap-1 transition-all flex-1 relative",
+                    "flex flex-col items-center gap-1 transition-all flex-1",
                     activeGame === item.id ? "text-casino-accent" : "text-slate-400"
                   )}
                 >
                   <item.icon size={20} className={cn(activeGame === item.id && "drop-shadow-[0_0_8px_rgba(0,255,153,0.5)]")} />
                   <span className="text-[9px] font-black uppercase tracking-tighter">{item.label}</span>
-                  {item.id === 'chat' && !isChatOpen && (
-                    <div className="absolute top-0 right-1/4 w-1.5 h-1.5 bg-casino-accent rounded-full animate-pulse" />
-                  )}
                   {activeGame === item.id && (
                     <motion.div 
                       layoutId="activeTab"
@@ -792,6 +950,15 @@ export default function App() {
             balance={balance ?? 0}
             userId={user.uid}
             onConfirm={handleTransaction}
+          />
+
+          <DailyBonus 
+            userId={user.uid} 
+            isOpen={isDailyBonusOpen} 
+            onClose={() => setIsDailyBonusOpen(false)}
+            onBonusClaimed={(amount) => {
+              soundService.play('win');
+            }}
           />
 
           <AnimatePresence>
@@ -849,6 +1016,25 @@ export default function App() {
             isOpen={isChatOpen} 
             onClose={() => setIsChatOpen(false)} 
           />
+
+          <Notifications 
+            userId={user.uid} 
+            isOpen={isNotificationsOpen} 
+            onClose={() => setIsNotificationsOpen(false)} 
+          />
+
+          {/* Floating Support Button */}
+          <button
+            onClick={() => setActiveGame('support')}
+            className="fixed bottom-24 md:bottom-8 right-20 md:right-24 z-[60] w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all group"
+            title="Contact Support"
+          >
+            <MessageSquare size={20} />
+            <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-black/80 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              সাপোর্ট
+            </div>
+          </button>
         </div>
+      </ErrorBoundary>
   );
 }

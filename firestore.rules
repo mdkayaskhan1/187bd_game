@@ -44,11 +44,14 @@ service cloud.firestore {
       return data.get('uid', request.auth.uid) == request.auth.uid &&
              data.balance is number && data.balance >= 0 &&
              (!('email' in data) || data.email is string) &&
-             (!('displayName' in data) || data.displayName is string);
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('username' in data) || data.username is string) &&
+             (!('settings' in data) || data.settings is map);
     }
 
     function isValidProfile(data) {
       return (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('username' in data) || (data.username is string && data.username.size() < 100)) &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 200000)) &&
              (!('balance' in data) || data.balance is number);
     }

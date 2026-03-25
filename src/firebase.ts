@@ -1,5 +1,15 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, User as FirebaseUser } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged, 
+  updateProfile, 
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
+} from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -13,6 +23,8 @@ export {
   signOut, 
   onAuthStateChanged, 
   updateProfile,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   doc, 
   setDoc, 
   getDoc, 

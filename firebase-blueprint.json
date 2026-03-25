@@ -7,8 +7,17 @@
       "properties": {
         "uid": { "type": "string" },
         "displayName": { "type": "string" },
+        "username": { "type": "string" },
+        "photoURL": { "type": "string" },
         "email": { "type": "string" },
         "balance": { "type": "number" },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "notifications": { "type": "boolean" },
+            "theme": { "type": "string" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "balance"]
@@ -49,6 +58,7 @@
       "type": "object",
       "properties": {
         "displayName": { "type": "string" },
+        "username": { "type": "string" },
         "photoURL": { "type": "string" },
         "balance": { "type": "number" },
         "updatedAt": { "type": "string", "format": "date-time" }

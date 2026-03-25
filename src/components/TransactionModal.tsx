@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowDownCircle, ArrowUpCircle, CreditCard, Smartphone, Landmark, Copy, CheckCircle2, History, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { X, ArrowDownCircle, ArrowUpCircle, CreditCard, Smartphone, Landmark, Copy, CheckCircle2, History, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '../types';
 import { db, collection, query, where, orderBy, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
 
@@ -10,7 +10,7 @@ interface TransactionModalProps {
   type: 'deposit' | 'withdrawal';
   balance: number;
   userId: string;
-  onConfirm: (amount: number, method: string, accountNumber: string) => Promise<void>;
+  onConfirm: (amount: number, method: string, accountNumber: string, transactionId?: string) => Promise<void>;
 }
 
 interface TransactionRecord {
@@ -18,15 +18,16 @@ interface TransactionRecord {
   amount: number;
   method: string;
   accountNumber: string;
+  transactionId?: string;
+  type: 'deposit' | 'withdrawal';
   status: 'pending' | 'completed' | 'rejected';
   timestamp: any;
 }
 
 const METHODS = [
-  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '018XXXXXXXX' },
   { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01789527096' },
-  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '019XXXXXXXX' },
-  { id: 'bank', label: 'Bank Transfer', icon: Landmark, color: 'bg-blue-600', number: 'Bank Details' },
+  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01789527096' },
+  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01789527096' },
 ];
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -38,8 +39,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onConfirm
 }) => {
   const [amount, setAmount] = useState<string>('');
-  const [method, setMethod] = useState<string>('bkash');
+  const [method, setMethod] = useState<string>('nagad');
   const [accountNumber, setAccountNumber] = useState<string>('');
+  const [transactionId, setTransactionId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'form' | 'history'>('form');
@@ -79,7 +81,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0) return;
+    if (!numAmount || numAmount < 100) {
+      alert('Minimum amount is 100 BDT');
+      return;
+    }
     if (type === 'withdrawal' && numAmount > balance) {
       alert('Insufficient balance');
       return;
@@ -87,10 +92,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
     setLoading(true);
     try {
-      await onConfirm(numAmount, method, accountNumber);
+      await onConfirm(numAmount, method, accountNumber, transactionId);
       setActiveTab('history');
       setAmount('');
       setAccountNumber('');
+      setTransactionId('');
     } catch (error) {
       console.error('Transaction error', error);
     } finally {
@@ -181,6 +187,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     onSubmit={handleSubmit}
                     className="space-y-6"
                   >
+                    {type === 'deposit' && (
+                      <div className="bg-casino-accent/10 border border-casino-accent/20 rounded-xl p-4 mb-6">
+                        <div className="flex items-center gap-2 text-casino-accent mb-1">
+                          <AlertCircle size={16} />
+                          <span className="text-xs font-bold uppercase tracking-widest">Deposit Instructions</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                          নিচের নাম্বারে <span className="text-casino-accent font-bold">Send Money</span> করুন। টাকা পাঠানোর পর ট্রানজেকশন আইডি এবং আপনার একাউন্ট নাম্বার দিয়ে সাবমিট করুন।
+                        </p>
+                        <div className="mt-3 flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Number:</span>
+                          <span className="text-xs font-mono font-bold text-white">{METHODS.find(m => m.id === method)?.number}</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Select Method</label>
                       <div className="grid grid-cols-2 gap-3">
@@ -228,17 +250,33 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                     <div>
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                        {type === 'deposit' ? 'Your Number / Transaction ID' : 'Your Account Number'}
+                        {type === 'deposit' ? 'Your Account Number' : 'Withdrawal Account Number'}
                       </label>
                       <input
                         type="text"
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder={method === 'bank' ? 'Enter Bank Account' : 'Enter Mobile Number'}
+                        placeholder="e.g. 01XXXXXXXXX"
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
                         required
                       />
                     </div>
+
+                    {type === 'deposit' && (
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                          Transaction ID
+                        </label>
+                        <input
+                          type="text"
+                          value={transactionId}
+                          onChange={(e) => setTransactionId(e.target.value)}
+                          placeholder="e.g. 8X7Y6Z5W"
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
+                          required
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Amount (BDT)</label>
@@ -309,7 +347,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                 <span className="font-bold text-white">{record.amount.toLocaleString()} BDT</span>
                                 <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-white/5 text-slate-400">{record.method}</span>
                               </div>
-                              <p className="text-[10px] text-slate-500 font-medium mt-1">
+                              <p className="text-[10px] text-slate-400 font-bold mt-1">
+                                {record.accountNumber} {record.transactionId && `• Txn: ${record.transactionId}`}
+                              </p>
+                              <p className="text-[10px] text-slate-500 font-medium">
                                 {record.timestamp?.toDate().toLocaleString() || 'Just now'}
                               </p>
                             </div>

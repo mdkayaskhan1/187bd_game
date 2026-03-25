@@ -101,7 +101,7 @@ export const AviatorGame: React.FC<AviatorProps> = ({ balance, onWin, onLoss }) 
         `👤 User: ${auth.currentUser?.displayName || 'Anonymous'}\n` +
         `🚀 Multiplier: ${(typeof finalMultiplier === 'number' ? finalMultiplier : 1).toFixed(2)}x\n` +
         `💰 Win: ${(winAmount - betAmount).toFixed(2)} BDT\n` +
-        `🕒 Time: ${new Date().toLocaleString()}`;
+        `🕒 Time: ${new Date(Date.now()).toLocaleString()}`;
       sendTelegramNotification(msg);
     }
 
@@ -306,6 +306,18 @@ export const AviatorGame: React.FC<AviatorProps> = ({ balance, onWin, onLoss }) 
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-mono">x</span>
                   </div>
+                  <div className="grid grid-cols-4 gap-1 mt-2">
+                    {[1.5, 2.0, 5.0, 10.0].map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setAutoCashoutMultiplier(m)}
+                        disabled={gameState === 'running'}
+                        className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-[10px] py-1 rounded border border-white/5 transition-colors font-mono text-slate-300"
+                      >
+                        {m}x
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -345,7 +357,7 @@ export const AviatorGame: React.FC<AviatorProps> = ({ balance, onWin, onLoss }) 
                 </button>
               ) : (
                 <button
-                  onClick={startNewRound}
+                  onClick={() => startNewRound()}
                   disabled={gameState === 'flew_away' || balance < betAmount}
                   className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white w-full py-6 rounded-2xl text-2xl font-black shadow-[0_0_50px_rgba(239,68,68,0.4)] transition-all active:scale-95"
                 >

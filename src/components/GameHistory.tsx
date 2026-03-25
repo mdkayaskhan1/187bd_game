@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { History, Clock, TrendingUp, TrendingDown, Filter, Calendar } from 'lucide-react';
+import { History as HistoryIcon, Clock, TrendingUp, TrendingDown, Filter, Calendar } from 'lucide-react';
 import { db, auth, collection, query, where, orderBy, limit, onSnapshot, handleFirestoreError, OperationType, Timestamp } from '../firebase';
 import { cn } from '../types';
 
@@ -81,8 +81,8 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ game }) => {
     }
 
     if (dateFilter !== 'all') {
-      const now = new Date();
-      let startDate = new Date();
+      const now = new Date(Date.now());
+      let startDate = new Date(Date.now());
       if (dateFilter === 'today') {
         startDate.setHours(0, 0, 0, 0);
       } else if (dateFilter === 'week') {
@@ -130,7 +130,7 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ game }) => {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-slate-400">
-          <History size={16} />
+          <HistoryIcon size={16} />
           <h3 className="text-xs font-bold uppercase tracking-wider">Recent Bets</h3>
         </div>
 

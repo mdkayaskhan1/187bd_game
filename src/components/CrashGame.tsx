@@ -100,7 +100,7 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
         `👤 User: ${auth.currentUser?.displayName || 'Anonymous'}\n` +
         `🚀 Multiplier: ${(typeof finalMultiplier === 'number' ? finalMultiplier : 1).toFixed(2)}x\n` +
         `💰 Win: ${(winAmount - betAmount).toFixed(2)} BDT\n` +
-        `🕒 Time: ${new Date().toLocaleString()}`;
+        `🕒 Time: ${new Date(Date.now()).toLocaleString()}`;
       sendTelegramNotification(msg);
     }
 
@@ -376,16 +376,30 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
                     <div className={cn("w-2 h-2 rounded-full", autoCashoutEnabled ? "bg-casino-accent animate-pulse" : "bg-slate-600")} />
                     AUTO CASHOUT
                   </button>
-                  <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1 px-2 border border-white/5">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Mult:</label>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      value={autoCashoutMultiplier}
-                      disabled={autoCashoutEnabled}
-                      onChange={(e) => setAutoCashoutMultiplier(Math.max(1.1, Number(e.target.value)))}
-                      className="flex-1 bg-transparent text-[10px] font-mono focus:outline-none text-center"
-                    />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1 px-2 border border-white/5">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Mult:</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        value={autoCashoutMultiplier}
+                        disabled={autoCashoutEnabled}
+                        onChange={(e) => setAutoCashoutMultiplier(Math.max(1.1, Number(e.target.value)))}
+                        className="flex-1 bg-transparent text-[10px] font-mono focus:outline-none text-center"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[1.5, 2.0, 5.0, 10.0].map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setAutoCashoutMultiplier(m)}
+                          disabled={autoCashoutEnabled}
+                          className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-[10px] py-1 rounded border border-white/5 transition-colors font-mono"
+                        >
+                          {m}x
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -403,7 +417,7 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
                 </button>
               ) : (
                 <button
-                  onClick={startNewRound}
+                  onClick={() => startNewRound()}
                   disabled={gameState === 'crashed' || balance < betAmount}
                   className="bg-casino-accent hover:bg-casino-accent-hover disabled:opacity-50 text-black w-full py-6 lg:py-0 rounded-2xl text-2xl font-black shadow-[0_0_50px_rgba(0,255,153,0.4)] transition-all active:scale-95 group"
                 >
