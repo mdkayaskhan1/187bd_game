@@ -217,14 +217,35 @@ export const SlotsGame: React.FC<SlotsProps> = ({ balance, onWin, onLoss }) => {
 
           <div className="flex gap-4 mb-8">
             {reels.map((symbol, i) => (
-              <motion.div
+              <div
                 key={i}
-                animate={spinning ? { y: [0, -10, 10, 0] } : {}}
-                transition={spinning ? { repeat: Infinity, duration: 0.2, ease: "linear" } : {}}
-                className="w-24 h-36 md:w-32 md:h-48 bg-black/40 border-2 border-white/10 rounded-2xl flex items-center justify-center text-4xl md:text-6xl shadow-inner"
+                className="w-24 h-36 md:w-32 md:h-48 bg-black/40 border-2 border-white/10 rounded-2xl flex items-center justify-center text-4xl md:text-6xl shadow-inner overflow-hidden relative"
               >
-                {symbol}
-              </motion.div>
+                <motion.div
+                  animate={spinning ? { y: ['0%', '100%'] } : { y: '0%' }}
+                  transition={
+                    spinning 
+                      ? { repeat: Infinity, duration: 0.1, ease: "linear" } 
+                      : { type: "spring", bounce: 0.6, duration: 0.6 }
+                  }
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center",
+                    spinning && "blur-[3px] opacity-70"
+                  )}
+                >
+                  {symbol}
+                </motion.div>
+                
+                {spinning && (
+                  <motion.div
+                    animate={{ y: ['-100%', '0%'] }}
+                    transition={{ repeat: Infinity, duration: 0.1, ease: "linear" }}
+                    className="absolute inset-0 flex items-center justify-center blur-[3px] opacity-70"
+                  >
+                    {SYMBOLS[(SYMBOLS.indexOf(symbol) + 1) % SYMBOLS.length]}
+                  </motion.div>
+                )}
+              </div>
             ))}
           </div>
 

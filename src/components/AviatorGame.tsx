@@ -64,7 +64,7 @@ export const AviatorGame: React.FC<AviatorProps> = ({ balance, onWin, onLoss }) 
         timestamp: serverTimestamp()
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'bets');
+      console.error('Bet logging failed:', error);
     }
   }, [betAmount]);
 

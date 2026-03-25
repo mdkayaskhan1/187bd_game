@@ -8,9 +8,10 @@ import {
   updateProfile, 
   User as FirebaseUser,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment, writeBatch } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -25,6 +26,7 @@ export {
   updateProfile,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   doc, 
   setDoc, 
   getDoc, 
@@ -41,7 +43,8 @@ export {
   deleteDoc,
   getDocs,
   Timestamp,
-  increment
+  increment,
+  writeBatch
 };
 
 export enum OperationType {

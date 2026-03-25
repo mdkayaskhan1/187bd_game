@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, X, Info, Gift, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { db, collection, query, where, orderBy, limit, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, orderBy, limit, onSnapshot, handleFirestoreError, OperationType, writeBatch, doc } from '../firebase';
 import { cn } from '../types';
 
 interface Notification {
@@ -41,6 +41,22 @@ export const Notifications: React.FC<{ userId: string; isOpen: boolean; onClose:
 
     return () => unsubscribe();
   }, [userId, isOpen]);
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => !n.read);
+    if (unread.length === 0) return;
+
+    const batch = writeBatch(db);
+    unread.forEach(n => {
+      batch.update(doc(db, 'notifications', n.id), { read: true });
+    });
+
+    try {
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'notifications');
+    }
+  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -118,7 +134,11 @@ export const Notifications: React.FC<{ userId: string; isOpen: boolean; onClose:
             </div>
 
             <div className="p-4 border-t border-white/5 bg-black/20 text-center">
-              <button className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-casino-accent transition-colors">
+              <button 
+                onClick={markAllAsRead}
+                disabled={notifications.filter(n => !n.read).length === 0}
+                className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-casino-accent transition-colors disabled:opacity-30 disabled:hover:text-slate-500"
+              >
                 সবগুলো পড়া হয়েছে হিসেবে চিহ্নিত করুন
               </button>
             </div>

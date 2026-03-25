@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SPIN71 bet - এডিটিং গাইড
 
-# Run and deploy your AI Studio app
+এই প্রজেক্টটি আপনি সহজেই নিজে এডিট করতে পারবেন। নিচে প্রধান ফাইলগুলোর কাজ দেওয়া হলো:
 
-This contains everything you need to run your app locally.
+## ১. প্রধান ফাইলসমূহ (Main Files)
+- **`src/App.tsx`**: এটি অ্যাপের মূল ফাইল। এখানে হোম পেজ, নেভিগেশন মেনু এবং গেম সিলেকশন লজিক আছে।
+- **`src/firebase.ts`**: ডাটাবেস এবং লগইন (Google Login) সেটআপ এখানে করা হয়েছে।
+- **`src/index.css`**: পুরো অ্যাপের ডিজাইন এবং থিম কালার এখান থেকে কন্ট্রোল করা হয়।
 
-View your app in AI Studio: https://ai.studio/apps/97400f0d-c322-4bd2-99a0-3979320d95d4
+## ২. গেম কম্পোনেন্টস (Game Components)
+আপনি যদি নির্দিষ্ট কোনো গেমের নিয়ম বা ডিজাইন পরিবর্তন করতে চান:
+- **`src/components/CrashGame.tsx`**: ক্র্যাশ গেম।
+- **`src/components/AviatorGame.tsx`**: এভিয়েটর গেম।
+- **`src/components/MinesGame.tsx`**: মাইনস গেম।
+- **`src/components/SlotsGame.tsx`**: স্লটস গেম।
 
-## Run Locally
+## ৩. ওয়ালেট এবং পেমেন্ট (Wallet & Payment)
+- **`src/components/WalletPage.tsx`**: টাকা ডিপোজিট এবং উইথড্র করার ফর্ম এখানে আছে।
+- **`src/components/TransactionModal.tsx`**: পেমেন্ট করার সময় যে পপ-আপ আসে।
 
-**Prerequisites:**  Node.js
+## ৪. কিভাবে এডিট করবেন?
+১. বাম দিকের ফাইল লিস্ট থেকে যেকোনো ফাইল সিলেক্ট করুন।
+২. কোড এডিটরে আপনার পছন্দমতো পরিবর্তন করুন।
+৩. ডান দিকের প্রিভিউ উইন্ডোতে সাথে সাথে রেজাল্ট দেখুন।
 
+## ৫. গুরুত্বপূর্ণ টিপস
+- **কালার পরিবর্তন:** কোডে `text-casino-accent` বা `bg-casino-bg` এর মতো ক্লাসগুলো খুঁজুন। এগুলো `tailwind.config.js` বা `index.css` এ ডিফাইন করা আছে।
+- **আইকন:** আমরা `lucide-react` লাইব্রেরি ব্যবহার করেছি। আপনি [Lucide Icons](https://lucide.dev/) থেকে নতুন আইকন খুঁজে নিয়ে কোডে বসাতে পারেন।
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+শুভ গেমিং এবং ডেভেলপিং!

@@ -37,6 +37,7 @@ export type GameType =
   | 'member_center'
   | 'wallet'
   | 'bet_history'
+  | 'transaction_history'
   | 'support'
   | 'terms'
   | 'crash' 

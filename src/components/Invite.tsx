@@ -5,7 +5,7 @@ import { cn } from '../types';
 
 export const Invite: React.FC<{ userId: string }> = ({ userId }) => {
   const [copied, setCopied] = useState(false);
-  const inviteLink = `${window.location.origin}/register?ref=${userId}`;
+  const inviteLink = `${window.location.origin}/?ref=${userId}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteLink);

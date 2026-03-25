@@ -89,12 +89,30 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "text", "timestamp"]
+    },
+    "Notification": {
+      "title": "User Notification",
+      "description": "System and user-specific notifications",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "bonus", "alert", "success"] },
+        "read": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "message", "type", "timestamp"]
     }
   },
   "firestore": {
     "/chat/{messageId}": {
       "schema": "ChatMessage",
       "description": "Global chat messages"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
     },
     "/jackpot/global": {
       "schema": "Jackpot",

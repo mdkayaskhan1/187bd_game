@@ -37,9 +37,9 @@ interface TransactionRecord {
 }
 
 const METHODS = [
-  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01789527096' },
-  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01789527096' },
-  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01789527096' },
+  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01789527096', min: 100, max: 20000 },
+  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01789527096', min: 100, max: 20000 },
+  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01789527096', min: 100, max: 20000 },
 ];
 
 export const WalletPage: React.FC<WalletPageProps> = ({
@@ -89,8 +89,12 @@ export const WalletPage: React.FC<WalletPageProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numAmount = Number(amount);
-    if (!numAmount || numAmount < 100) {
-      alert('Minimum amount is 100 BDT');
+    if (!numAmount || numAmount < (selectedMethod?.min || 100)) {
+      alert(`Minimum amount is ${selectedMethod?.min || 100} BDT`);
+      return;
+    }
+    if (numAmount > (selectedMethod?.max || 20000)) {
+      alert(`Maximum amount is ${selectedMethod?.max || 20000} BDT`);
       return;
     }
     if (type === 'withdrawal' && numAmount > balance) {
@@ -119,9 +123,9 @@ export const WalletPage: React.FC<WalletPageProps> = ({
           <div>
             <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
               <Wallet className="text-casino-accent" size={32} />
-              Wallet & Transactions
+              ডিপোজিট ও লেনদেন
             </h1>
-            <p className="text-slate-400 mt-1">Manage your funds and view your transaction history</p>
+            <p className="text-slate-400 mt-1">আপনার ফান্ড ম্যানেজ করুন এবং লেনদেনের ইতিহাস দেখুন</p>
           </div>
           
           <div className="glass-panel p-6 flex items-center gap-6 min-w-[240px]">
@@ -129,7 +133,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
               <Wallet size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Available Balance</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">বর্তমান ব্যালেন্স</p>
               <h2 className="text-2xl font-black text-white font-mono">{balance.toLocaleString()} <span className="text-xs text-slate-400">BDT</span></h2>
             </div>
           </div>
@@ -149,7 +153,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
                   )}
                 >
                   <ArrowDownCircle size={18} />
-                  Deposit
+                  ডিপোজিট
                 </button>
                 <button
                   onClick={() => setType('withdrawal')}
@@ -159,7 +163,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
                   )}
                 >
                   <ArrowUpCircle size={18} />
-                  Withdraw
+                  উইথড্র
                 </button>
               </div>
 
@@ -180,7 +184,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
 
                   {/* Method Selection */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">Select Payment Method</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">পেমেন্ট মেথড নির্বাচন করুন</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {METHODS.map((m) => (
                         <button
@@ -232,13 +236,13 @@ export const WalletPage: React.FC<WalletPageProps> = ({
                     {/* Account Number */}
                     <div>
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                        {type === 'deposit' ? 'Your Account Number' : 'Withdrawal Account Number'}
+                        {type === 'deposit' ? 'আপনার একাউন্ট নাম্বার' : 'উইথড্র একাউন্ট নাম্বার'}
                       </label>
                       <input
                         type="text"
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="e.g. 01XXXXXXXXX"
+                        placeholder="যেমন: 01XXXXXXXXX"
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
                         required
                       />
@@ -248,13 +252,13 @@ export const WalletPage: React.FC<WalletPageProps> = ({
                     {type === 'deposit' && (
                       <div>
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                          Transaction ID
+                          ট্রানজেকশন আইডি
                         </label>
                         <input
                           type="text"
                           value={transactionId}
                           onChange={(e) => setTransactionId(e.target.value)}
-                          placeholder="e.g. 8X7Y6Z5W"
+                          placeholder="যেমন: 8X7Y6Z5W"
                           className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
                           required
                         />
@@ -264,7 +268,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
 
                   {/* Amount */}
                   <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Amount (BDT)</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">পরিমাণ (BDT)</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -305,7 +309,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
                       <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        {type === 'deposit' ? 'Submit Deposit' : 'Submit Withdrawal'}
+                        {type === 'deposit' ? 'ডিপোজিট সাবমিট করুন' : 'উইথড্র সাবমিট করুন'}
                         <ArrowRight size={20} />
                       </>
                     )}
@@ -321,7 +325,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
                   <History size={18} className="text-casino-accent" />
-                  Transaction History
+                  লেনদেন ইতিহাস
                 </h3>
               </div>
               

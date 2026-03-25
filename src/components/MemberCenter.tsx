@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, LogOut, User as UserIcon, Loader2, CheckCircle2, AlertCircle, Bell, Moon, Sun, Save, Wallet, MessageSquare, FileText, Trophy } from 'lucide-react';
-import { auth, db, doc, setDoc, getDoc, serverTimestamp, updateProfile, handleFirestoreError, OperationType } from '../firebase';
+import { Camera, LogOut, User as UserIcon, Loader2, CheckCircle2, AlertCircle, Bell, Moon, Sun, Save, Wallet, MessageSquare, FileText, Trophy, Gift, Shield, ChevronRight, History } from 'lucide-react';
+import { auth, db, doc, setDoc, getDoc, serverTimestamp, updateProfile, handleFirestoreError, OperationType, sendPasswordResetEmail } from '../firebase';
 import { cn } from '../types';
 
 interface MemberCenterProps {
@@ -17,6 +17,7 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [xp, setXp] = useState(0);
   const [settings, setSettings] = useState({
     notifications: true,
@@ -31,6 +32,7 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
         if (userDoc.exists()) {
           const data = userDoc.data();
           setUsername(data.username || '');
+          setDisplayName(data.displayName || '');
           setXp(data.xp || 0);
           if (data.settings) {
             setSettings(data.settings);
@@ -53,12 +55,14 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
 
       await setDoc(userDocRef, {
         username,
+        displayName,
         settings,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
       await setDoc(profileDocRef, {
         username,
+        displayName,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -77,9 +81,9 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to 100KB for Firestore document safety)
-    if (file.size > 100 * 1024) {
-      setError('ছবিটি ১০০ কেবি-র বেশি বড় হতে পারবে না।');
+    // Check file size (limit to 25MB as requested)
+    if (file.size > 25 * 1024 * 1024) {
+      setError('ছবিটি ২৫ এমবি-র বেশি বড় হতে পারবে না।');
       return;
     }
 
@@ -94,40 +98,49 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
     setSuccess(false);
 
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        
-        if (auth.currentUser) {
-          // 1. Update Firebase Auth Profile
-          await updateProfile(auth.currentUser, {
-            photoURL: base64String
-          });
+      const formData = new FormData();
+      formData.append('file', file);
 
-          // 2. Update Firestore Profiles Collection
-          const profileDocRef = doc(db, 'profiles', auth.currentUser.uid);
-          await setDoc(profileDocRef, {
-            photoURL: base64String,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-          // 3. Update User document
-          const userDocRef = doc(db, 'users', auth.currentUser.uid);
-          await setDoc(userDocRef, {
-            photoURL: base64String,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
 
-          setSuccess(true);
-          setTimeout(() => setSuccess(false), 3000);
-        }
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const { url } = await response.json();
+      const fullUrl = `${window.location.origin}${url}`;
+
+      if (auth.currentUser) {
+        // 1. Update Firebase Auth Profile
+        await updateProfile(auth.currentUser, {
+          photoURL: fullUrl
+        });
+
+        // 2. Update Firestore Profiles Collection
+        const profileDocRef = doc(db, 'profiles', auth.currentUser.uid);
+        await setDoc(profileDocRef, {
+          photoURL: fullUrl,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // 3. Update User document
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        await setDoc(userDocRef, {
+          photoURL: fullUrl,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
     } catch (err) {
       console.error('Upload error:', err);
       handleFirestoreError(err, OperationType.WRITE, `profiles/${user?.uid}`);
       setError('ছবি আপলোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
       setUploading(false);
     }
   };
@@ -239,15 +252,63 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
         <button 
           onClick={() => onNavigate('wallet')}
           className="glass-panel p-6 bg-casino-accent/10 text-casino-accent font-black uppercase tracking-widest hover:bg-casino-accent/20 transition-all flex flex-col items-center justify-center gap-3 group"
         >
           <Wallet size={24} className="group-hover:scale-110 transition-transform" />
-          ওয়ালেট
+          ডিপোজিট
+        </button>
+
+        <button 
+          onClick={() => onNavigate('bet_history')}
+          className="glass-panel p-6 bg-yellow-500/10 text-yellow-500 font-black uppercase tracking-widest hover:bg-yellow-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <FileText size={24} className="group-hover:scale-110 transition-transform" />
+          বেট হিস্ট্রি
+        </button>
+
+        <button 
+          onClick={() => onNavigate('transaction_history')}
+          className="glass-panel p-6 bg-cyan-500/10 text-cyan-500 font-black uppercase tracking-widest hover:bg-cyan-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <History size={24} className="group-hover:scale-110 transition-transform" />
+          লেনদেন হিস্ট্রি
+        </button>
+
+        <button 
+          onClick={() => onNavigate('leaderboard')}
+          className="glass-panel p-6 bg-orange-500/10 text-orange-500 font-black uppercase tracking-widest hover:bg-orange-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <Trophy size={24} className="group-hover:scale-110 transition-transform" />
+          লিডার বোর্ড
+        </button>
+
+        <button 
+          onClick={() => onNavigate('promotion')}
+          className="glass-panel p-6 bg-pink-500/10 text-pink-500 font-black uppercase tracking-widest hover:bg-pink-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <Bell size={24} className="group-hover:scale-110 transition-transform" />
+          প্রমোশন
+        </button>
+
+        <button 
+          onClick={() => onNavigate('invite')}
+          className="glass-panel p-6 bg-green-500/10 text-green-500 font-black uppercase tracking-widest hover:bg-green-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <UserIcon size={24} className="group-hover:scale-110 transition-transform" />
+          আমন্ত্রণ
         </button>
         
+        <button 
+          onClick={() => onNavigate('daily_bonus')}
+          className="glass-panel p-6 bg-yellow-400/10 text-yellow-400 font-black uppercase tracking-widest hover:bg-yellow-400/20 transition-all flex flex-col items-center justify-center gap-3 group"
+        >
+          <Gift size={24} className="group-hover:scale-110 transition-transform" />
+          প্রতিদিনের বোনাস
+        </button>
+
         <button 
           onClick={() => onNavigate('support')}
           className="glass-panel p-6 bg-blue-500/10 text-blue-500 font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all flex flex-col items-center justify-center gap-3 group"
@@ -276,7 +337,17 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
       <div className="space-y-8">
         <div className="pt-8 border-t border-white/5">
           <h3 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">প্রোফাইল সেটিংস</h3>
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">পুরো নাম</label>
+              <input 
+                type="text" 
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="আপনার পুরো নাম লিখুন"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-casino-accent transition-all"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">ইউজারনেম</label>
               <input 
@@ -339,6 +410,33 @@ export const MemberCenter: React.FC<MemberCenterProps> = ({ user, balance, onLog
                   settings.theme === 'dark' ? "right-1" : "left-1"
                 )} />
               </div>
+            </button>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t border-white/5">
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">নিরাপত্তা</h3>
+          <div className="grid grid-cols-1 gap-4">
+            <button 
+              onClick={async () => {
+                if (!user?.email) return;
+                try {
+                  await sendPasswordResetEmail(auth, user.email);
+                  setSuccess(true);
+                  setTimeout(() => setSuccess(false), 3000);
+                  alert('পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে। আপনার ইনবক্স চেক করুন।');
+                } catch (err) {
+                  console.error('Password reset error:', err);
+                  setError('পাসওয়ার্ড রিসেট ইমেইল পাঠাতে সমস্যা হয়েছে।');
+                }
+              }}
+              className="p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3 text-slate-400 group-hover:text-white transition-colors">
+                <Shield size={20} />
+                <span className="text-sm font-bold">পাসওয়ার্ড পরিবর্তন করুন</span>
+              </div>
+              <ChevronRight size={16} className="text-slate-600 group-hover:text-white transition-colors" />
             </button>
           </div>
         </div>

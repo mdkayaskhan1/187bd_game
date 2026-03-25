@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { TrendingUp, Play, Square, Info, ChevronDown, ChevronUp, History as HistoryIcon } from 'lucide-react';
+import { TrendingUp, Play, Square, Info, ChevronDown, ChevronUp, History as HistoryIcon, Minus, Plus } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { cn } from '../types';
 import { db, auth, collection, addDoc, serverTimestamp, handleFirestoreError, OperationType } from '../firebase';
@@ -66,7 +66,7 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
         timestamp: serverTimestamp()
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'bets');
+      console.error('Bet logging failed:', error);
     }
   }, [betAmount]);
 
@@ -330,7 +330,10 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
               </div>
 
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-1 gap-4">
-                <div className="space-y-2">
+                <div className={cn(
+                  "p-3 rounded-2xl border transition-all space-y-3",
+                  autoRebet ? "bg-casino-accent/5 border-casino-accent/30" : "bg-black/20 border-white/5"
+                )}>
                   <button
                     onClick={() => {
                       if (autoRebet) {
@@ -342,59 +345,100 @@ export const CrashGame: React.FC<CrashProps> = ({ balance, onWin, onLoss }) => {
                       }
                     }}
                     className={cn(
-                      "w-full py-3 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs font-bold",
-                      autoRebet ? "bg-casino-accent/20 border-casino-accent text-casino-accent" : "bg-white/5 border-white/10 text-slate-400"
+                      "w-full py-2.5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest",
+                      autoRebet ? "bg-casino-accent text-black border-transparent" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
                     )}
                   >
-                    <div className={cn("w-2 h-2 rounded-full", autoRebet ? "bg-casino-accent animate-pulse" : "bg-slate-600")} />
+                    <div className={cn("w-2 h-2 rounded-full", autoRebet ? "bg-black animate-pulse" : "bg-slate-600")} />
                     AUTO BET {autoRebet && roundsRemaining !== -1 && `(${roundsRemaining})`}
                   </button>
-                  <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1 px-2 border border-white/5">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Rounds:</label>
-                    <input 
-                      type="number" 
-                      value={autoBetRounds === -1 ? '' : autoBetRounds} 
-                      placeholder="∞"
+                  
+                  <div className="flex items-center justify-between bg-black/40 rounded-xl p-1 border border-white/10">
+                    <button 
+                      onClick={() => setAutoBetRounds(prev => Math.max(1, prev - 1))}
                       disabled={autoRebet}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? -1 : Math.max(-1, Number(e.target.value));
-                        setAutoBetRounds(val);
-                      }}
-                      className="flex-1 bg-transparent text-[10px] font-mono focus:outline-none text-center"
-                    />
+                      className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 text-slate-400"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Rounds</span>
+                      <input 
+                        type="number" 
+                        value={autoBetRounds === -1 ? '' : autoBetRounds} 
+                        placeholder="∞"
+                        disabled={autoRebet}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? -1 : Math.max(-1, Number(e.target.value));
+                          setAutoBetRounds(val);
+                        }}
+                        className="w-12 bg-transparent text-xs font-mono focus:outline-none text-center text-white"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => setAutoBetRounds(prev => prev === -1 ? 1 : prev + 1)}
+                      disabled={autoRebet}
+                      className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 text-slate-400"
+                    >
+                      <Plus size={14} />
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className={cn(
+                  "p-3 rounded-2xl border transition-all space-y-3",
+                  autoCashoutEnabled ? "bg-casino-accent/5 border-casino-accent/30" : "bg-black/20 border-white/5"
+                )}>
                   <button
                     onClick={() => setAutoCashoutEnabled(!autoCashoutEnabled)}
                     className={cn(
-                      "w-full py-3 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs font-bold",
-                      autoCashoutEnabled ? "bg-casino-accent/20 border-casino-accent text-casino-accent" : "bg-white/5 border-white/10 text-slate-400"
+                      "w-full py-2.5 rounded-xl border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest",
+                      autoCashoutEnabled ? "bg-casino-accent text-black border-transparent" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
                     )}
                   >
-                    <div className={cn("w-2 h-2 rounded-full", autoCashoutEnabled ? "bg-casino-accent animate-pulse" : "bg-slate-600")} />
+                    <div className={cn("w-2 h-2 rounded-full", autoCashoutEnabled ? "bg-black animate-pulse" : "bg-slate-600")} />
                     AUTO CASHOUT
                   </button>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1 px-2 border border-white/5">
-                      <label className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Mult:</label>
-                      <input 
-                        type="number" 
-                        step="0.1"
-                        value={autoCashoutMultiplier}
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between bg-black/40 rounded-xl p-1 border border-white/10">
+                      <button 
+                        onClick={() => setAutoCashoutMultiplier(prev => Math.max(1.1, Number((prev - 0.1).toFixed(1))))}
                         disabled={autoCashoutEnabled}
-                        onChange={(e) => setAutoCashoutMultiplier(Math.max(1.1, Number(e.target.value)))}
-                        className="flex-1 bg-transparent text-[10px] font-mono focus:outline-none text-center"
-                      />
+                        className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 text-slate-400"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Multiplier</span>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          value={autoCashoutMultiplier}
+                          disabled={autoCashoutEnabled}
+                          onChange={(e) => setAutoCashoutMultiplier(Math.max(1.1, Number(e.target.value)))}
+                          className="w-12 bg-transparent text-xs font-mono focus:outline-none text-center text-white"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => setAutoCashoutMultiplier(prev => Number((prev + 0.1).toFixed(1)))}
+                        disabled={autoCashoutEnabled}
+                        className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 text-slate-400"
+                      >
+                        <Plus size={14} />
+                      </button>
                     </div>
+                    
                     <div className="grid grid-cols-4 gap-1">
                       {[1.5, 2.0, 5.0, 10.0].map(m => (
                         <button
                           key={m}
                           onClick={() => setAutoCashoutMultiplier(m)}
                           disabled={autoCashoutEnabled}
-                          className="bg-white/5 hover:bg-white/10 disabled:opacity-50 text-[10px] py-1 rounded border border-white/5 transition-colors font-mono"
+                          className={cn(
+                            "text-[9px] py-1 rounded border transition-all font-mono",
+                            autoCashoutMultiplier === m ? "bg-casino-accent/20 border-casino-accent/50 text-casino-accent" : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"
+                          )}
                         >
                           {m}x
                         </button>
