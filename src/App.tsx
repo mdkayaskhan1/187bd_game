@@ -39,7 +39,8 @@ import {
   PlayCircle,
   Trophy as SportsIcon,
   CreditCard,
-  Plus
+  Plus,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   auth, 
@@ -83,6 +84,7 @@ import { LimboGame } from './components/LimboGame';
 import { PlinkoGame } from './components/PlinkoGame';
 import { Login } from './components/Login';
 import { TransactionModal } from './components/TransactionModal';
+import { AdminPanel } from './components/AdminPanel';
 import { GameType, cn } from './types';
 import { sendTelegramNotification } from './services/notificationService';
 import { soundService } from './services/soundService';
@@ -481,6 +483,10 @@ export default function App() {
     { id: 'invite', label: 'আমন্ত্রণ', icon: Users },
     { id: 'member_center', label: 'সদস্য', icon: UserCircle },
   ];
+
+  if (user?.email === 'mdkayaskhan923@gmail.com') {
+    navItems.push({ id: 'admin', label: 'অ্যাডমিন', icon: ShieldAlert });
+  }
 
   if (loading) {
     return (
@@ -1027,6 +1033,10 @@ export default function App() {
 
                 {activeGame === 'terms' && (
                   <TermsPage />
+                )}
+
+                {activeGame === 'admin' && user?.email === 'mdkayaskhan923@gmail.com' && (
+                  <AdminPanel />
                 )}
 
                 {activeGame === 'crash' && (

@@ -57,4 +57,5 @@ export type GameType =
   | 'slots_cat'
   | 'sports_cat'
   | 'lottery_cat'
-  | 'esports_cat';
+  | 'esports_cat'
+  | 'admin';
