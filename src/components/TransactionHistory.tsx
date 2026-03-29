@@ -20,6 +20,10 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
     if (!userId) return;
@@ -48,6 +52,34 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
 
   const filteredTransactions = transactions.filter(tx => {
     if (filter !== 'all' && tx.type !== filter) return false;
+    if (statusFilter !== 'all' && tx.status !== statusFilter) return false;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesId = tx.id.toLowerCase().includes(query);
+      const matchesTxId = tx.transactionId?.toLowerCase().includes(query);
+      if (!matchesId && !matchesTxId) return false;
+    }
+    
+    if (startDate || endDate) {
+      const txDate = tx.timestamp?.toDate();
+      if (!txDate) return false;
+      
+      const txDateOnly = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (txDateOnly < start) return false;
+      }
+      
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (txDateOnly > end) return false;
+      }
+    }
+    
     return true;
   });
 
@@ -64,7 +96,45 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
             <p className="text-slate-400 mt-1">আপনার সব ডিপোজিট এবং উইথড্র রেকর্ড এখানে দেখুন</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Search Bar */}
+            <div className="relative group w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-casino-accent transition-colors" size={16} />
+              <input 
+                type="text"
+                placeholder="ট্রানজেকশন আইডি দিয়ে খুঁজুন..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/40 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-casino-accent/50 transition-all"
+              />
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent text-xs text-slate-300 px-2 py-1.5 focus:outline-none rounded-lg"
+              />
+              <span className="text-slate-500 text-xs">-</span>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent text-xs text-slate-300 px-2 py-1.5 focus:outline-none rounded-lg"
+              />
+              {(startDate || endDate) && (
+                <button 
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  className="text-xs text-casino-danger hover:text-red-400 px-2 font-bold uppercase tracking-widest"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Type Filter */}
             <div className="glass-panel p-1 flex gap-1">
               {(['all', 'deposit', 'withdrawal'] as const).map((f) => (
                 <button
@@ -79,6 +149,22 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
                 </button>
               ))}
             </div>
+
+            {/* Status Filter */}
+            <div className="glass-panel p-1 flex gap-1">
+              {(['all', 'pending', 'completed', 'rejected'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                    statusFilter === s ? "bg-casino-accent text-black" : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  {s === 'all' ? 'সব স্ট্যাটাস' : s === 'pending' ? 'অপেক্ষমান' : s === 'completed' ? 'সফল' : 'বাতিল'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -89,7 +175,7 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
               <thead>
                 <tr className="bg-black/40 border-b border-white/5">
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Type</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Method</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">ID / Method</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Time</th>
@@ -133,7 +219,10 @@ export const TransactionHistory: React.FC<{ userId: string }> = ({ userId }) => 
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-white uppercase">{tx.method}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">{tx.accountNumber}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">Acc: {tx.accountNumber}</span>
+                          {tx.transactionId && (
+                            <span className="text-[10px] text-casino-accent font-mono mt-0.5">TxID: {tx.transactionId}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">

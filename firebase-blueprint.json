@@ -11,6 +11,7 @@
         "photoURL": { "type": "string" },
         "email": { "type": "string" },
         "balance": { "type": "number" },
+        "referrerId": { "type": "string" },
         "settings": {
           "type": "object",
           "properties": {
@@ -21,6 +22,18 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "balance"]
+    },
+    "Referral": {
+      "title": "Referral Record",
+      "description": "Tracks referrals between users",
+      "type": "object",
+      "properties": {
+        "referrerId": { "type": "string" },
+        "referredUserId": { "type": "string" },
+        "bonusClaimed": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["referrerId", "referredUserId", "timestamp"]
     },
     "Bet": {
       "title": "Bet History",
@@ -48,6 +61,8 @@
         "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
         "method": { "type": "string" },
         "accountNumber": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "proofUrl": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "type", "amount", "status", "timestamp", "method"]
@@ -103,6 +118,28 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "title", "message", "type", "timestamp"]
+    },
+    "DailyBonus": {
+      "title": "Daily Bonus Record",
+      "description": "Tracks when a user last claimed their daily bonus",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "totalClaimed": { "type": "number" },
+        "lastClaimed": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "lastClaimed"]
+    },
+    "CrashHistory": {
+      "title": "Crash Game History",
+      "description": "Records of crash game multipliers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "multiplier": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "multiplier", "timestamp"]
     }
   },
   "firestore": {
@@ -133,6 +170,18 @@
     "/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "Financial transactions"
+    },
+    "/daily_bonus/{bonusId}": {
+      "schema": "DailyBonus",
+      "description": "Daily bonus claim history"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "Referral tracking"
+    },
+    "/crash_history/{historyId}": {
+      "schema": "CrashHistory",
+      "description": "Crash game history"
     }
   }
 }

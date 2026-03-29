@@ -24,6 +24,19 @@ service cloud.firestore {
     //   - win: boolean
     //   - timestamp: timestamp (required)
     //
+    // Collection: transactions
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required)
+    //   - type: string (required, enum: deposit, withdrawal)
+    //   - amount: number (required, > 0)
+    //   - status: string (required, enum: pending, completed, failed, rejected)
+    //   - method: string (required)
+    //   - accountNumber: string
+    //   - transactionId: string
+    //   - proofUrl: string
+    //   - timestamp: timestamp (required)
+    //
     // Collection: notifications
     // Document ID: auto-generated
     // Fields:
@@ -33,6 +46,13 @@ service cloud.firestore {
     //   - type: string (required, enum: info, bonus, alert, success)
     //   - read: boolean
     //   - timestamp: timestamp (required)
+    //
+    // Collection: daily_bonus
+    // Document ID: userId (auth.uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - totalClaimed: number
+    //   - lastClaimed: timestamp (required)
     // ===============================================================
 
     // ===============================================================
@@ -54,19 +74,25 @@ service cloud.firestore {
       return data.get('uid', request.auth.uid) == request.auth.uid &&
              data.balance is number && data.balance >= 0 &&
              (!('email' in data) || data.email is string) &&
-             (!('displayName' in data) || data.displayName is string) &&
-             (!('username' in data) || data.username is string) &&
-             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('username' in data) || (data.username is string && data.username.size() < 100)) &&
+             (!('username_lowercase' in data) || (data.username_lowercase is string && data.username_lowercase.size() < 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 2000)) &&
+             (!('xp' in data) || data.xp is number) &&
+             (!('referrerId' in data) || (data.referrerId is string || data.referrerId == null)) &&
              (!('settings' in data) || data.settings is map) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidProfile(data) {
-      return (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+      return (!('uid' in data) || data.uid == request.auth.uid) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
              (!('username' in data) || (data.username is string && data.username.size() < 100)) &&
-             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 200000)) &&
+             (!('username_lowercase' in data) || (data.username_lowercase is string && data.username_lowercase.size() < 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 2000)) &&
              (!('balance' in data) || data.balance is number) &&
+             (!('xp' in data) || data.xp is number) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
@@ -86,6 +112,8 @@ service cloud.firestore {
              data.method is string &&
              data.timestamp is timestamp &&
              (!('accountNumber' in data) || data.accountNumber is string) &&
+             (!('transactionId' in data) || (data.transactionId is string || data.transactionId == null)) &&
+             (!('proofUrl' in data) || (data.proofUrl is string || data.proofUrl == null)) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
@@ -108,9 +136,29 @@ service cloud.firestore {
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
+    function isValidDailyBonus(data) {
+      return data.uid == request.auth.uid &&
+             data.lastClaimed is timestamp &&
+             (!('totalClaimed' in data) || data.totalClaimed is number);
+    }
+
+    function isValidReferral(data) {
+      return data.referrerId is string &&
+             data.referredUserId is string &&
+             data.timestamp is timestamp &&
+             (!('bonusClaimed' in data) || data.bonusClaimed is bool);
+    }
+
+    function isValidCrashHistory(data) {
+      return data.uid == request.auth.uid &&
+             data.multiplier is number && data.multiplier >= 1 &&
+             data.timestamp is timestamp;
+    }
+
     function isAdmin() {
       return isAuthenticated() &&
-        (request.auth.token.email == "mdkayaskhan923@gmail.com" && request.auth.token.email_verified == true);
+        ((request.auth.token.email == "mdkayaskhan923@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "cutelegend7045@gmail.com" && request.auth.token.email_verified == true));
     }
 
     // ===============================================================
@@ -124,8 +172,13 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isAuthenticated(); // Allow balance updates for referrals
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.balance == resource.data.balance; // Owner can't change balance
+      allow update: if isAdmin() || (isAuthenticated() && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance']) &&
+                      request.resource.data.balance >= resource.data.balance); // System/Referral can only increase balance
     }
 
     match /profiles/{userId} {
@@ -141,8 +194,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /crash_history/{historyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCrashHistory(request.resource.data);
+    }
+
     match /transactions/{transactionId} {
       allow read: if isDocOwner() || isAdmin();
+      allow list: if isAdmin();
       allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -162,8 +221,24 @@ service cloud.firestore {
     }
 
     match /referrals/{referralId} {
-      allow read: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || resource.data.referredId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.referredId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.referrerId == request.auth.uid || resource.data.referredUserId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.referredUserId == request.auth.uid && isValidReferral(request.resource.data);
+    }
+
+    match /daily_bonus/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && isValidDailyBonus(request.resource.data);
+    }
+
+    match /valid_trx/{trxId} {
+      allow read: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']) && resource.data.used == false && request.resource.data.used == true;
+    }
+
+    match /admin_config/{configId} {
+      allow read, write, list: if isAdmin();
     }
 
     match /test/connection {

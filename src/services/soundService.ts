@@ -1,3 +1,5 @@
+import { Howl } from 'howler';
+
 const SOUNDS = {
   bet: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3', // Click
   win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3', // Chime/Ding
@@ -8,11 +10,12 @@ const SOUNDS = {
   takeoff: 'https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3', // Jet engine start
   cruise: 'https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3', // Jet engine hum
   flyaway: 'https://assets.mixkit.co/active_storage/sfx/2015/2015-preview.mp3', // Jet engine flyby
+  tile: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', // Subtle tile click
 };
 
 class SoundService {
   private enabled: boolean = localStorage.getItem('soundEnabled') !== 'false';
-  private activeSounds: Map<string, HTMLAudioElement> = new Map();
+  private activeSounds: Map<string, Howl> = new Map();
 
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
@@ -30,34 +33,38 @@ class SoundService {
     if (!this.enabled) return;
     
     try {
-      const audio = new Audio(SOUNDS[soundName]);
-      audio.volume = 0.4;
-      audio.loop = loop;
+      let sound = this.activeSounds.get(soundName);
       
-      if (loop) {
-        this.activeSounds.set(soundName, audio);
+      if (!sound) {
+        sound = new Howl({
+          src: [SOUNDS[soundName]],
+          volume: 0.4,
+          loop: loop,
+          html5: true
+        });
+        if (loop) {
+          this.activeSounds.set(soundName, sound);
+        }
       }
 
-      audio.play().catch(err => console.warn('Sound play blocked:', err));
-      return audio;
+      sound.play();
+      return sound;
     } catch (error) {
       console.error('Error playing sound:', error);
     }
   }
 
   stop(soundName: keyof typeof SOUNDS) {
-    const audio = this.activeSounds.get(soundName);
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
+    const sound = this.activeSounds.get(soundName);
+    if (sound) {
+      sound.stop();
       this.activeSounds.delete(soundName);
     }
   }
 
   stopAll() {
-    this.activeSounds.forEach(audio => {
-      audio.pause();
-      audio.currentTime = 0;
+    this.activeSounds.forEach(sound => {
+      sound.stop();
     });
     this.activeSounds.clear();
   }

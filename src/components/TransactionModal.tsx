@@ -25,9 +25,9 @@ interface TransactionRecord {
 }
 
 const METHODS = [
-  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01789527096' },
-  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01789527096' },
-  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01789527096' },
+  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01860137045' },
+  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01860137045' },
+  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01860137045' },
 ];
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -82,11 +82,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     e.preventDefault();
     const numAmount = Number(amount);
     if (!numAmount || numAmount < 100) {
-      alert('Minimum amount is 100 BDT');
+      toast.error('Minimum amount is 100 BDT');
       return;
     }
     if (type === 'withdrawal' && numAmount > balance) {
-      alert('Insufficient balance');
+      toast.error('Insufficient balance');
       return;
     }
 
@@ -194,7 +194,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           <span className="text-xs font-bold uppercase tracking-widest">Deposit Instructions</span>
                         </div>
                         <p className="text-[10px] text-slate-400 leading-relaxed">
-                          নিচের নাম্বারে <span className="text-casino-accent font-bold">Send Money</span> করুন। টাকা পাঠানোর পর ট্রানজেকশন আইডি এবং আপনার একাউন্ট নাম্বার দিয়ে সাবমিট করুন।
+                          নিচের নাম্বারে <span className="text-casino-accent font-bold">Send Money</span> করুন। টাকা পাঠানোর পর ট্রানজেকশন আইডি এবং আপনার একাউন্ট নাম্বার দিয়ে সাবমিট করুন। কোনো সমস্যা হলে আমাদের <button type="button" onClick={() => { onClose(); window.dispatchEvent(new CustomEvent('navigate', { detail: 'support' })); }} className="text-casino-accent underline font-bold">সাপোর্ট টিমে</button> যোগাযোগ করুন।
                         </p>
                         <div className="mt-3 flex items-center justify-between bg-black/40 p-2 rounded-lg border border-white/5">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Number:</span>

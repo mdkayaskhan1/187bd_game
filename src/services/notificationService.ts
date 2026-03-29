@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 export async function sendTelegramNotification(message: string) {
   try {
     const response = await fetch('/api/notify', {
@@ -6,9 +8,10 @@ export async function sendTelegramNotification(message: string) {
       body: JSON.stringify({ message }),
     });
     if (!response.ok) {
-      console.error('Failed to send Telegram notification');
+      toast.error('Failed to send notification');
     }
   } catch (error) {
     console.error('Telegram notification error:', error);
+    toast.error('Failed to send notification');
   }
 }

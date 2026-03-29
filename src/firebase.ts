@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
+  FacebookAuthProvider,
   signInWithPopup, 
   signOut, 
   onAuthStateChanged, 
@@ -11,13 +12,17 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment, writeBatch } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, getDocFromServer, deleteDoc, getDocs, Timestamp, increment, writeBatch, runTransaction } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { toast } from 'sonner';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
 
 export { 
   signInWithPopup, 
@@ -44,7 +49,12 @@ export {
   getDocs,
   Timestamp,
   increment,
-  writeBatch
+  writeBatch,
+  runTransaction,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
 };
 
 export enum OperationType {
@@ -95,6 +105,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
+  toast.error(`Database Error (${operationType}): ${errInfo.error}`);
   throw new Error(JSON.stringify(errInfo));
 }
 export type { FirebaseUser };

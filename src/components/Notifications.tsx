@@ -13,12 +13,12 @@ interface Notification {
   read: boolean;
 }
 
-export const Notifications: React.FC<{ userId: string; isOpen: boolean; onClose: () => void }> = ({ userId, isOpen, onClose }) => {
+export const Notifications: React.FC<{ userId: string; isOpen: boolean; onClose: () => void; onUnreadCountChange?: (count: number) => void }> = ({ userId, isOpen, onClose, onUnreadCountChange }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId || !isOpen) return;
+    if (!userId) return;
 
     const q = query(
       collection(db, 'notifications'),
@@ -34,13 +34,16 @@ export const Notifications: React.FC<{ userId: string; isOpen: boolean; onClose:
       })) as Notification[];
       setNotifications(msgs);
       setLoading(false);
+      if (onUnreadCountChange) {
+        onUnreadCountChange(msgs.filter(n => !n.read).length);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userId, isOpen]);
+  }, [userId, onUnreadCountChange]);
 
   const markAllAsRead = async () => {
     const unread = notifications.filter(n => !n.read);

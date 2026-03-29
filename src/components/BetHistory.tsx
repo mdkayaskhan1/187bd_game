@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { History as HistoryIcon, Trophy, XCircle, Clock, Search, Filter, ArrowUpRight, ArrowDownRight, Gamepad2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { History as HistoryIcon, Trophy, XCircle, Clock, Search, Filter, ArrowUpRight, ArrowDownRight, Gamepad2, ChevronLeft } from 'lucide-react';
 import { db, collection, query, where, orderBy, limit, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
 import { cn } from '../types';
 
@@ -56,16 +56,21 @@ export const BetHistory: React.FC<{ userId: string }> = ({ userId }) => {
   const games = Array.from(new Set(bets.map(b => b.game)));
 
   return (
-    <div className="flex-1 overflow-y-auto bg-casino-bg p-4 md:p-8 custom-scrollbar">
+    <div className="flex-1 overflow-y-auto bg-casino-bg p-4 md:p-8 custom-scrollbar relative">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
-              <HistoryIcon className="text-casino-accent" size={32} />
-              বেটিং হিস্ট্রি
-            </h1>
-            <p className="text-slate-400 mt-1">আপনার সব গেমের বিস্তারিত রিপোর্ট এখানে দেখুন</p>
+          <div className="flex items-center gap-4">
+            <button onClick={() => window.location.reload()} className="p-2 bg-white/10 rounded-full text-white">
+              <ChevronLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+                <HistoryIcon className="text-casino-accent" size={32} />
+                বেটিং হিস্ট্রি
+              </h1>
+              <p className="text-slate-400 mt-1">আপনার সব গেমের বিস্তারিত রিপোর্ট এখানে দেখুন</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

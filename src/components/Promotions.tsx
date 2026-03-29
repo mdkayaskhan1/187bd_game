@@ -181,7 +181,7 @@ export const Promotions: React.FC = () => {
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Current Progress</p>
                 
                 <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden mb-4">
-                  <div className="h-full bg-casino-accent w-[45%] shadow-[0_0_15px_rgba(0,255,153,0.5)]" />
+                  <div className="h-full bg-casino-accent w-[45%] shadow-[0_0_15px_rgba(245,208,97,0.5)]" />
                 </div>
                 
                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">

@@ -14,15 +14,22 @@ import {
   Wallet,
   ChevronRight,
   CreditCard,
-  ArrowRight
+  ArrowRight,
+  Crown,
+  Camera,
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../types';
 import { db, collection, query, where, orderBy, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
+import { uploadImage } from '../services/uploadService';
+import { useRef } from 'react';
 
 interface WalletPageProps {
   balance: number;
   userId: string;
-  onConfirm: (amount: number, method: string, accountNumber: string, transactionId?: string, type?: 'deposit' | 'withdrawal') => Promise<void>;
+  onConfirm: (amount: number, method: string, accountNumber: string, transactionId?: string, type?: 'deposit' | 'withdrawal', proofUrl?: string) => Promise<void>;
+  defaultType?: 'deposit' | 'withdrawal';
 }
 
 interface TransactionRecord {
@@ -37,24 +44,27 @@ interface TransactionRecord {
 }
 
 const METHODS = [
-  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-[#F7941D]', number: '01789527096', min: 100, max: 20000 },
-  { id: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-[#D12053]', number: '01789527096', min: 100, max: 20000 },
-  { id: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-[#8C3494]', number: '01789527096', min: 100, max: 20000 },
+  { id: 'nagad', label: 'Nagad', icon: Smartphone, color: 'from-[#F7941D] to-[#D67D12]', number: '01789527096', min: 100, max: 20000 },
 ];
 
 export const WalletPage: React.FC<WalletPageProps> = ({
   balance,
   userId,
-  onConfirm
+  onConfirm,
+  defaultType = 'deposit'
 }) => {
-  const [type, setType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [type, setType] = useState<'deposit' | 'withdrawal'>(defaultType);
+  const [depositType, setDepositType] = useState<'cashout' | 'sendmoney'>('cashout');
   const [amount, setAmount] = useState<string>('');
   const [method, setMethod] = useState<string>('nagad');
   const [accountNumber, setAccountNumber] = useState<string>('');
   const [transactionId, setTransactionId] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [proofUrl, setProofUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<TransactionRecord[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedMethod = METHODS.find(m => m.id === method);
 
@@ -90,24 +100,25 @@ export const WalletPage: React.FC<WalletPageProps> = ({
     e.preventDefault();
     const numAmount = Number(amount);
     if (!numAmount || numAmount < (selectedMethod?.min || 100)) {
-      alert(`Minimum amount is ${selectedMethod?.min || 100} BDT`);
+      toast.error(`Minimum amount is ${selectedMethod?.min || 100} BDT`);
       return;
     }
     if (numAmount > (selectedMethod?.max || 20000)) {
-      alert(`Maximum amount is ${selectedMethod?.max || 20000} BDT`);
+      toast.error(`Maximum amount is ${selectedMethod?.max || 20000} BDT`);
       return;
     }
     if (type === 'withdrawal' && numAmount > balance) {
-      alert('Insufficient balance');
+      toast.error('Insufficient balance');
       return;
     }
 
     setLoading(true);
     try {
-      await onConfirm(numAmount, method, accountNumber, transactionId, type);
+      await onConfirm(numAmount, method, accountNumber, transactionId, type, proofUrl);
       setAmount('');
       setAccountNumber('');
       setTransactionId('');
+      setProofUrl('');
     } catch (error) {
       console.error('Transaction error', error);
     } finally {
@@ -115,281 +126,250 @@ export const WalletPage: React.FC<WalletPageProps> = ({
     }
   };
 
+  const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('ছবিটি ৫০ এমবি-র বেশি বড় হতে পারবে না।');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const extension = file.name.split('.').pop();
+      const path = `deposits/${userId}/proof-${Date.now()}.${extension}`;
+      const url = await uploadImage(file, path);
+      setProofUrl(url);
+    } catch (err) {
+      console.error('Proof upload error:', err);
+      toast.error('ছবি আপলোড করতে সমস্যা হয়েছে।');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto bg-casino-bg p-4 md:p-8 custom-scrollbar">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="flex-1 overflow-y-auto bg-[#F8F9FA] custom-scrollbar relative">
+      {/* Header matching screenshot */}
+      {type === 'deposit' && (
+        <div className="bg-[#006B3D] text-white p-4 flex items-center justify-between sticky top-0 z-50">
           <div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-white flex items-center gap-3">
-              <Wallet className="text-casino-accent" size={32} />
-              ডিপোজিট ও লেনদেন
-            </h1>
-            <p className="text-slate-400 mt-1">আপনার ফান্ড ম্যানেজ করুন এবং লেনদেনের ইতিহাস দেখুন</p>
+            <h2 className="text-xl font-black">BDT {amount || '0'}</h2>
+            <p className="text-[10px] font-bold">কম বা বেশি {depositType === 'cashout' ? 'ক্যাশআউট' : 'সেন্ড মানি'} করবেন না</p>
           </div>
-          
-          <div className="glass-panel p-6 flex items-center gap-6 min-w-[240px]">
-            <div className="p-3 rounded-2xl bg-casino-accent/10 text-casino-accent">
-              <Wallet size={24} />
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-2">
+              <span className="bg-white text-[#006B3D] px-2 py-0.5 rounded text-[10px] font-black italic">PAY</span>
+              <span className="text-[10px] font-black tracking-widest uppercase">SERVICE</span>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">বর্তমান ব্যালেন্স</p>
-              <h2 className="text-2xl font-black text-white font-mono">{balance.toLocaleString()} <span className="text-xs text-slate-400">BDT</span></h2>
+            <div className="flex gap-2 mt-1">
+              <button className="text-[8px] bg-white/20 px-2 py-0.5 rounded">EN</button>
+              <button className="text-[8px] bg-white px-2 py-0.5 rounded text-[#006B3D]">বাং</button>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Form */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="glass-panel p-0 overflow-hidden">
-              {/* Type Selector */}
-              <div className="flex border-b border-white/5">
-                <button
-                  onClick={() => setType('deposit')}
-                  className={cn(
-                    "flex-1 py-4 text-sm font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2",
-                    type === 'deposit' ? "bg-casino-success/10 text-casino-success border-b-2 border-casino-success" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  <ArrowDownCircle size={18} />
-                  ডিপোজিট
-                </button>
-                <button
-                  onClick={() => setType('withdrawal')}
-                  className={cn(
-                    "flex-1 py-4 text-sm font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2",
-                    type === 'withdrawal' ? "bg-casino-danger/10 text-casino-danger border-b-2 border-casino-danger" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  <ArrowUpCircle size={18} />
-                  উইথড্র
-                </button>
-              </div>
+      <div className="max-w-xl mx-auto p-4 space-y-6 relative z-10">
+        {type === 'deposit' && (
+          <div className="bg-red-50 text-red-600 border border-red-100 rounded-xl p-4 text-center">
+            <p className="text-sm font-black leading-relaxed">
+              আপনি যদি টাকার পরিমাণ পরিবর্তন করেন (BDT {amount || '0'}), আপনি ক্রেডিট পেতে সক্ষম হবেন না।
+            </p>
+          </div>
+        )}
 
-              <div className="p-6 md:p-8">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Instructions for Deposit */}
-                  {type === 'deposit' && (
-                    <div className="bg-casino-accent/10 border border-casino-accent/20 rounded-xl p-4 mb-6">
-                      <div className="flex items-center gap-2 text-casino-accent mb-1">
-                        <AlertCircle size={16} />
-                        <span className="text-xs font-bold uppercase tracking-widest">Deposit Instructions</span>
-                      </div>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        নিচের নাম্বারে <span className="text-casino-accent font-bold">Send Money</span> করুন। টাকা পাঠানোর পর ট্রানজেকশন আইডি এবং আপনার একাউন্ট নাম্বার দিয়ে সাবমিট করুন।
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Method Selection */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">পেমেন্ট মেথড নির্বাচন করুন</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {METHODS.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setMethod(m.id)}
-                          className={cn(
-                            "flex items-center gap-3 p-4 rounded-xl border transition-all",
-                            method === m.id 
-                              ? "border-casino-accent bg-casino-accent/10" 
-                              : "border-white/5 bg-black/20 hover:bg-black/40"
-                          )}
-                        >
-                          <div className={cn("p-2 rounded-lg text-white", m.color)}>
-                            <m.icon size={16} />
-                          </div>
-                          <span className="text-sm font-bold">{m.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Method Details for Deposit */}
-                  {type === 'deposit' && selectedMethod && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="bg-black/40 border border-white/5 rounded-xl p-5"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Send Money To (Personal)</p>
-                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold text-white", selectedMethod.color)}>{selectedMethod.label}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl font-mono font-bold text-white tracking-wider">{selectedMethod.number}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(selectedMethod.number)}
-                          className="flex items-center gap-2 px-3 py-2 bg-casino-accent/10 hover:bg-casino-accent/20 rounded-lg text-casino-accent transition-all text-xs font-bold"
-                        >
-                          {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                          {copied ? 'COPIED' : 'COPY'}
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Account Number */}
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                        {type === 'deposit' ? 'আপনার একাউন্ট নাম্বার' : 'উইথড্র একাউন্ট নাম্বার'}
-                      </label>
-                      <input
-                        type="text"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="যেমন: 01XXXXXXXXX"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
-                        required
-                      />
-                    </div>
-
-                    {/* Transaction ID (Deposit Only) */}
-                    {type === 'deposit' && (
-                      <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                          ট্রানজেকশন আইডি
-                        </label>
-                        <input
-                          type="text"
-                          value={transactionId}
-                          onChange={(e) => setTransactionId(e.target.value)}
-                          placeholder="যেমন: 8X7Y6Z5W"
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-casino-accent text-lg font-medium"
-                          required
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Amount */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">পরিমাণ (BDT)</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 focus:outline-none focus:border-casino-accent text-2xl font-mono font-bold"
-                        required
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">BDT</div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      {[100, 500, 1000, 5000].map(val => (
-                        <button 
-                          key={val}
-                          type="button"
-                          onClick={() => setAmount(val.toString())}
-                          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-400 transition-colors"
-                        >
-                          +{val}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || !amount || !accountNumber}
-                    className={cn(
-                      "w-full py-4 rounded-2xl text-lg font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl",
-                      type === 'deposit' 
-                        ? "bg-casino-success text-black hover:bg-casino-success-hover shadow-casino-success/20" 
-                        : "bg-casino-danger text-white hover:bg-casino-danger-hover shadow-casino-danger/20",
-                      (loading || !amount || !accountNumber) && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    {loading ? (
-                      <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        {type === 'deposit' ? 'ডিপোজিট সাবমিট করুন' : 'উইথড্র সাবমিট করুন'}
-                        <ArrowRight size={20} />
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-            </div>
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          {/* Type Selector */}
+          <div className="flex bg-slate-50 border-b border-slate-100">
+            <button
+              onClick={() => setType('deposit')}
+              className={cn(
+                "flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all",
+                type === 'deposit' ? "text-[#006B3D] bg-white" : "text-slate-400"
+              )}
+            >
+              ডিপোজিট
+            </button>
+            <button
+              onClick={() => setType('withdrawal')}
+              className={cn(
+                "flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all",
+                type === 'withdrawal' ? "text-[#006B3D] bg-white" : "text-slate-400"
+              )}
+            >
+              উইথড্র
+            </button>
           </div>
 
-          {/* Right Column: History */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="glass-panel flex flex-col h-full max-h-[800px]">
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                  <History size={18} className="text-casino-accent" />
-                  লেনদেন ইতিহাস
-                </h3>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
-                {history.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-slate-600">
-                    <History size={48} className="mb-4 opacity-20" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No transactions yet</p>
+          <div className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {type === 'deposit' && (
+                <div className="flex gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setDepositType('cashout')}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-[10px] font-black transition-all",
+                      depositType === 'cashout' ? "bg-[#006B3D] text-white" : "bg-slate-100 text-slate-500"
+                    )}
+                  >
+                    CASHOUT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepositType('sendmoney')}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-[10px] font-black transition-all",
+                      depositType === 'sendmoney' ? "bg-[#006B3D] text-white" : "bg-slate-100 text-slate-500"
+                    )}
+                  >
+                    SEND MONEY
+                  </button>
+                </div>
+              )}
+
+              {type === 'deposit' && (
+                <div className="bg-[#F44336] text-white p-4 rounded-2xl flex items-center gap-4 shadow-lg">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center p-2">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Nagad_Logo.svg/1200px-Nagad_Logo.svg.png" alt="Nagad" className="w-full object-contain" />
                   </div>
-                ) : (
-                  history.map((record) => (
-                    <div key={record.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:bg-white/10 transition-all group">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "p-2 rounded-xl",
-                            record.type === 'deposit' ? "bg-casino-success/20 text-casino-success" : "bg-casino-danger/20 text-casino-danger"
-                          )}>
-                            {record.type === 'deposit' ? <ArrowDownCircle size={16} /> : <ArrowUpCircle size={16} />}
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-white uppercase tracking-tight">{record.type}</p>
-                            <p className="text-[10px] text-slate-500">{record.timestamp?.toDate().toLocaleString() || 'Just now'}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-sm font-black font-mono",
-                            record.type === 'deposit' ? "text-casino-success" : "text-casino-danger"
-                          )}>
-                            {record.type === 'deposit' ? '+' : '-'}{record.amount.toLocaleString()}
-                          </p>
-                          <span className={cn(
-                            "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
-                            record.status === 'completed' ? "text-casino-success bg-casino-success/10" :
-                            record.status === 'pending' ? "text-casino-accent bg-casino-accent/10" :
-                            "text-casino-danger bg-casino-danger/10"
-                          )}>
-                            {record.status}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
-                        <div>
-                          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Method</p>
-                          <p className="text-[10px] font-bold text-slate-300 uppercase">{record.method}</p>
-                        </div>
-                        <div>
-                          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Account</p>
-                          <p className="text-[10px] font-mono text-slate-300">{record.accountNumber}</p>
-                        </div>
-                        {record.transactionId && (
-                          <div className="col-span-2">
-                            <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Transaction ID</p>
-                            <p className="text-[10px] font-mono text-slate-300">{record.transactionId}</p>
-                          </div>
-                        )}
-                      </div>
+                  <h2 className="text-xl font-black italic tracking-tight uppercase">NAGAD Deposit</h2>
+                </div>
+              )}
+
+              {type === 'deposit' && selectedMethod && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 block mb-1">Wallet No*</label>
+                    <p className="text-[10px] text-slate-500 font-bold mb-2">এই NAGAD নাম্বারে শুধুমাত্র {depositType === 'cashout' ? 'ক্যাশআউট' : 'সেন্ড মানি'} গ্রহণ করা হয়</p>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-center justify-between">
+                      <span className="text-2xl font-mono font-black text-slate-700 tracking-wider">
+                        {selectedMethod.number}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(selectedMethod.number)}
+                        className="text-[#006B3D] hover:scale-110 transition-transform"
+                      >
+                        {copied ? <CheckCircle2 size={24} /> : <Copy size={24} />}
+                      </button>
                     </div>
-                  ))
-                )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-black text-slate-800 block mb-2">
+                      {depositType === 'cashout' ? 'ক্যাশআউটের' : 'সেন্ড মানির'} TrxID নাম্বারটি লিখুন <span className="text-red-500">(প্রয়োজন)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      placeholder="TrxID অবশ্যই পূরণ করতে হবে!"
+                      className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-4 focus:outline-none focus:border-[#006B3D] text-lg font-bold text-slate-700 placeholder:text-slate-300"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-black text-slate-800 block mb-2">
+                      পেমেন্ট স্ক্রিনশট আপলোড করুন <span className="text-slate-400 font-bold">(ঐচ্ছিক)</span>
+                    </label>
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "w-full border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
+                        proofUrl ? "border-green-500 bg-green-50" : "border-slate-200 hover:border-[#006B3D] bg-slate-50"
+                      )}
+                    >
+                      {uploading ? (
+                        <Loader2 className="text-[#006B3D] animate-spin" size={32} />
+                      ) : proofUrl ? (
+                        <>
+                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-green-500">
+                            <img src={proofUrl} alt="Proof" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
+                              <CheckCircle2 className="text-green-600" size={24} />
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold text-green-600">স্ক্রিনশট আপলোড হয়েছে</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
+                            <Camera className="text-slate-400" size={24} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-black text-slate-700">ক্লিক করে স্ক্রিনশট সিলেক্ট করুন</p>
+                            <p className="text-[10px] text-slate-400 font-bold mt-1">যেকোনো সাইজের ছবি সাপোর্ট করবে</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleProofUpload} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {type === 'withdrawal' && (
+                <div className="space-y-4">
+                   <div>
+                    <label className="text-xs font-black text-slate-800 block mb-2">উইথড্র একাউন্ট নাম্বার</label>
+                    <input
+                      type="text"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                      placeholder="যেমন: 01XXXXXXXXX"
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 focus:outline-none focus:border-[#006B3D] text-lg font-medium"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-black text-slate-800 block mb-2">পরিমাণ (BDT)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-4 focus:outline-none focus:border-[#006B3D] text-3xl font-mono font-black text-slate-700"
+                    required
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">BDT</div>
+                </div>
               </div>
-            </div>
+
+              <button
+                type="submit"
+                disabled={loading || !amount || (type === 'deposit' && !transactionId)}
+                className={cn(
+                  "w-full py-4 rounded-xl text-lg font-black uppercase tracking-widest transition-all shadow-lg",
+                  type === 'deposit' ? "bg-white border-2 border-slate-800 text-slate-800 hover:bg-slate-50" : "bg-red-600 text-white hover:bg-red-700",
+                  loading && "opacity-50"
+                )}
+              >
+                {loading ? "প্রসেসিং..." : (type === 'deposit' ? "নিশ্চিত" : "উইথড্র সাবমিট")}
+              </button>
+
+              {type === 'deposit' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-800">সতর্কতাঃ</p>
+                  <p className="text-[10px] text-red-500 font-bold leading-relaxed">
+                    লেনদেন আইডি সঠিকভাবে পূরণ করতে হবে, অন্যথায় স্কোর ব্যর্থ হবে! ! অনুগ্রহ করে নিশ্চিত হয়ে নিন যে আপনি NAGAD deposit ওয়ালেট নাম্বারে ক্যাশ আউট করছেন। এই নাম্বারের অন্য কোন ওয়ালেট থেকে ক্যাশ আউট করলে সেই টাকা পাওয়ার কোন সম্ভাবনা নাই
+                  </p>
+                </div>
+              )}
+            </form>
           </div>
         </div>
       </div>

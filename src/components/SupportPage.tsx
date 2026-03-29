@@ -1,27 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Phone, Mail, Send, ExternalLink, ShieldCheck, Clock, HelpCircle, Bot, User, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { MessageSquare, Phone, Mail, Send, ExternalLink, ShieldCheck, Clock, HelpCircle, Bot, User, Loader2, Sparkles, ArrowRight, Wallet, ArrowRightLeft, Coins } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../types';
 
 const AI_AGENT_SYSTEM_INSTRUCTION = `
-You are a helpful and professional AI Support Agent for "Casino Royale", a premium online gaming platform in Bangladesh.
+You are a helpful and professional AI Support Agent for "SPIN71 BET", a premium online gaming platform in Bangladesh.
 Your goal is to act as the live message agent and assist users with their questions, specifically focusing on deposits, withdrawals, and game rules.
 
 Key Information:
-- Platform Name: Casino Royale
+- Platform Name: SPIN71 BET
 - Minimum Deposit: 100 BDT.
 - Minimum Withdrawal: 500 BDT.
 - Payment Methods: BKash, Nagad, Rocket.
 - Withdrawal Time: 30 minutes to 2 hours.
+- Referral Bonus: Referrer gets 277 BDT, Referred user gets 17 BDT.
 
-Deposit Process:
-1. Go to the Wallet (ওয়ালেট) section.
-2. Select 'Deposit' (ডিপোজিট).
-3. Choose your preferred method (bKash, Nagad, or Rocket).
-4. Send the money to the provided agent/personal number.
-5. Enter the exact Amount and the Transaction ID (TrxID) in the form.
-6. Click Submit. The balance will be added upon verification.
+Money & Transaction Details:
+- Balance: Your total playable funds. You can see this in the header or wallet.
+- Deposits: To add money, go to Wallet -> Deposit. Send money to our agent numbers via bKash/Nagad/Rocket. Enter the TrxID and amount in the app.
+- Withdrawals: To take out money, go to Wallet -> Withdraw. Minimum 500 BDT. Enter your number and amount.
+- Safety: All transactions are encrypted and manually verified for security.
+
+Contact Details for Human Support:
+- WhatsApp: 01860137045
+- Telegram Bot: @webai45_bot
+- Telegram Channel: https://t.me/spin71_bet
+- Telegram Admin: @ns_coinx3
 
 Game Rules:
 - Aviator / Crash: Place a bet and watch the multiplier grow. You must click "Cash Out" before the plane flies away or crashes. If it crashes before you cash out, you lose.
@@ -40,7 +45,7 @@ Guidelines:
 
 const AIAgent: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
-    { role: 'model', text: 'আসসালামু আলাইকুম! আমি ক্যাসিনো রয়্যাল-এর লাইভ সাপোর্ট এজেন্ট। ডিপোজিট, গেমের রুলস বা অন্য যেকোনো বিষয়ে আমি আপনাকে কীভাবে সাহায্য করতে পারি?' }
+    { role: 'model', text: 'আসসালামু আলাইকুম! আমি SPIN71 BET-এর লাইভ সাপোর্ট এজেন্ট। ডিপোজিট, উইথড্র বা গেমের বিষয়ে আমি আপনাকে কীভাবে সাহায্য করতে পারি?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -188,28 +193,36 @@ const AIAgent: React.FC = () => {
 export const SupportPage: React.FC = () => {
   const supportChannels = [
     {
-      id: 'telegram',
-      title: 'Telegram Support',
-      desc: 'আমাদের অফিসিয়াল টেলিগ্রাম চ্যানেলে যোগ দিন এবং সরাসরি কথা বলুন।',
-      icon: Send,
-      color: 'bg-[#229ED9]',
-      link: 'https://t.me/your_telegram_channel'
-    },
-    {
       id: 'whatsapp',
       title: 'WhatsApp Support',
-      desc: 'যেকোনো প্রয়োজনে আমাদের হোয়াটসঅ্যাপে মেসেজ দিন।',
+      desc: 'যেকোনো প্রয়োজনে আমাদের হোয়াটসঅ্যাপে মেসেজ দিন। (01860137045)',
       icon: Phone,
       color: 'bg-[#25D366]',
-      link: 'https://wa.me/your_whatsapp_number'
+      link: 'https://wa.me/8801860137045'
     },
     {
-      id: 'email',
-      title: 'Email Support',
-      desc: 'আপনার সমস্যা বিস্তারিত লিখে আমাদের ইমেইল করুন।',
-      icon: Mail,
+      id: 'tg-bot',
+      title: 'Telegram Bot',
+      desc: 'আমাদের অটোমেটেড টেলিগ্রাম বটের মাধ্যমে দ্রুত সাহায্য নিন।',
+      icon: Bot,
+      color: 'bg-[#229ED9]',
+      link: 'https://t.me/webai45_bot'
+    },
+    {
+      id: 'tg-channel',
+      title: 'Telegram Channel',
+      desc: 'সবশেষ আপডেট এবং অফার পেতে আমাদের চ্যানেলে যোগ দিন।',
+      icon: Send,
+      color: 'bg-[#229ED9]',
+      link: 'https://t.me/spin71_bet'
+    },
+    {
+      id: 'tg-admin',
+      title: 'Telegram Admin',
+      desc: 'সরাসরি এডমিনের সাথে কথা বলতে এখানে ক্লিক করুন।',
+      icon: User,
       color: 'bg-casino-accent',
-      link: 'mailto:support@yourcasino.com'
+      link: 'https://t.me/ns_coinx3'
     }
   ];
 
@@ -247,8 +260,40 @@ export const SupportPage: React.FC = () => {
           <AIAgent />
         </div>
 
+        {/* Money & Transactions Info */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+            <Wallet className="text-casino-accent" size={24} />
+            টাকা ও লেনদেন সংক্রান্ত তথ্য
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="glass-panel p-6 space-y-4">
+              <h3 className="text-lg font-bold text-casino-accent flex items-center gap-2">
+                <ArrowRightLeft size={20} /> ডিপোজিট (Deposit)
+              </h3>
+              <ul className="text-sm text-slate-400 space-y-2 list-disc pl-4">
+                <li>মিনিমাম ডিপোজিট ১০০ BDT।</li>
+                <li>বিকাশ, নগদ বা রকেট এর মাধ্যমে টাকা পাঠাতে পারবেন।</li>
+                <li>টাকা পাঠানোর পর TrxID এবং সঠিক অ্যামাউন্ট দিয়ে ফর্ম পূরণ করুন।</li>
+                <li>৫-১০ মিনিটের মধ্যে আপনার ব্যালেন্স আপডেট হয়ে যাবে।</li>
+              </ul>
+            </div>
+            <div className="glass-panel p-6 space-y-4">
+              <h3 className="text-lg font-bold text-casino-accent flex items-center gap-2">
+                <Coins size={20} /> উইথড্র (Withdraw)
+              </h3>
+              <ul className="text-sm text-slate-400 space-y-2 list-disc pl-4">
+                <li>মিনিমাম উইথড্র ৫০০ BDT।</li>
+                <li>আপনার পার্সোনাল বিকাশ, নগদ বা রকেট নম্বরে টাকা নিতে পারবেন।</li>
+                <li>উইথড্র রিকোয়েস্ট দেওয়ার ৩০ মিনিট থেকে ২ ঘণ্টার মধ্যে পেমেন্ট পাবেন।</li>
+                <li>২৪ ঘণ্টা উইথড্র সার্ভিস চালু থাকে।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Support Channels */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {supportChannels.map((channel, i) => (
             <motion.a
               key={channel.id}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gift, X, Star, Sparkles, Trophy, Clock, Loader2 } from 'lucide-react';
+import { Gift, X, Star, Sparkles, Trophy, Clock, Loader2, Mail } from 'lucide-react';
 import { db, doc, getDoc, setDoc, serverTimestamp, increment, handleFirestoreError, OperationType } from '../firebase';
 import { cn } from '../types';
 import confetti from 'canvas-confetti';
@@ -12,7 +12,7 @@ interface DailyBonusProps {
   onBonusClaimed: (amount: number) => void;
 }
 
-const BONUS_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000];
+const BONUS_AMOUNTS = [3.77, 5.77, 6.77, 9.77];
 
 export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose, onBonusClaimed }) => {
   const [loading, setLoading] = useState(true);
@@ -38,9 +38,9 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
           
           const now = new Date(Date.now());
           const diff = now.getTime() - lastDate.getTime();
-          const hours24 = 24 * 60 * 60 * 1000;
+          const hours12 = 12 * 60 * 60 * 1000;
 
-          if (diff >= hours24) {
+          if (diff >= hours12) {
             setCanClaim(true);
           } else {
             setCanClaim(false);
@@ -60,7 +60,7 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
   }, [userId, isOpen]);
 
   const updateTimeLeft = (lastDate: Date) => {
-    const nextClaim = new Date(new Date(lastDate).getTime() + 24 * 60 * 60 * 1000);
+    const nextClaim = new Date(new Date(lastDate).getTime() + 12 * 60 * 60 * 1000);
     
     const timer = setInterval(() => {
       const now = new Date(Date.now());
@@ -86,20 +86,9 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
 
     setClaiming(true);
     try {
-      // Randomly pick a bonus amount with weights
-      // Higher weights for smaller amounts
-      const weights = [40, 30, 15, 8, 4, 2, 1]; 
-      const totalWeight = weights.reduce((a, b) => a + b, 0);
-      let random = Math.random() * totalWeight;
-      
-      let selectedAmount = BONUS_AMOUNTS[0];
-      for (let i = 0; i < weights.length; i++) {
-        if (random < weights[i]) {
-          selectedAmount = BONUS_AMOUNTS[i];
-          break;
-        }
-        random -= weights[i];
-      }
+      // Randomly pick a bonus amount
+      const randomIndex = Math.floor(Math.random() * BONUS_AMOUNTS.length);
+      const selectedAmount = BONUS_AMOUNTS[randomIndex];
 
       // Update Database
       const bonusRef = doc(db, 'daily_bonus', userId);
@@ -153,8 +142,8 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
             className="relative w-full max-w-md glass-panel p-8 text-center overflow-hidden"
           >
             {/* Background Decorations */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-casino-accent/20 blur-[100px] rounded-full" />
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/20 blur-[100px] rounded-full" />
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-500/20 blur-[100px] rounded-full" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-orange-500/20 blur-[100px] rounded-full" />
 
             <button
               onClick={onClose}
@@ -164,12 +153,12 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
             </button>
 
             <div className="relative z-10">
-              <div className="w-24 h-24 bg-casino-accent/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(0,255,153,0.2)]">
-                <Gift size={48} className="text-casino-accent" />
+              <div className="w-24 h-24 bg-red-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                <Mail size={48} className="text-red-500" />
               </div>
 
-              <h2 className="text-3xl font-black uppercase tracking-tighter mb-2">ডেইলি বোনাস</h2>
-              <p className="text-slate-400 text-sm mb-8">প্রতিদিন লগইন করুন এবং জিতে নিন আকর্ষণীয় বোনাস!</p>
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 text-red-500">বোনাস সেন্টার</h2>
+              <p className="text-slate-400 text-sm mb-8">প্রতি ১২ ঘণ্টা পর পর লাল খাম খুলুন এবং জিতে নিন আকর্ষণীয় বোনাস!</p>
 
               {loading ? (
                 <div className="py-12 flex flex-col items-center gap-4">
@@ -182,11 +171,11 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
                   animate={{ opacity: 1, scale: 1 }}
                   className="py-8"
                 >
-                  <div className="text-6xl font-black text-casino-accent mb-2">{claimedAmount}</div>
+                  <div className="text-6xl font-black text-red-500 mb-2">{claimedAmount}</div>
                   <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">BDT Claimed!</div>
                   <button
                     onClick={onClose}
-                    className="btn-primary w-full py-4 text-lg"
+                    className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-2xl transition-colors text-lg"
                   >
                     অসাধারণ!
                   </button>
@@ -194,10 +183,10 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
               ) : (
                 <div className="space-y-6">
                   <div className="grid grid-cols-4 gap-2 mb-8">
-                    {BONUS_AMOUNTS.slice(0, 4).map((amt, i) => (
+                    {BONUS_AMOUNTS.map((amt, i) => (
                       <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3">
                         <div className="text-xs font-bold text-slate-500 mb-1">{amt}</div>
-                        <Star size={12} className="mx-auto text-casino-accent/40" />
+                        <Star size={12} className="mx-auto text-red-500/40" />
                       </div>
                     ))}
                   </div>
@@ -206,14 +195,14 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
                     <button
                       onClick={handleClaim}
                       disabled={claiming}
-                      className="btn-primary w-full py-5 text-xl flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,255,153,0.3)] group"
+                      className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black py-5 rounded-2xl text-xl flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)] group transition-all"
                     >
                       {claiming ? (
                         <Loader2 size={24} className="animate-spin" />
                       ) : (
                         <>
                           <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />
-                          বোনাস নিন
+                          লাল খাম খুলুন
                         </>
                       )}
                     </button>
@@ -222,11 +211,11 @@ export const DailyBonus: React.FC<DailyBonusProps> = ({ userId, isOpen, onClose,
                       <div className="bg-black/40 border border-white/5 rounded-2xl p-6">
                         <div className="flex items-center justify-center gap-2 text-slate-500 mb-2">
                           <Clock size={16} />
-                          <span className="text-xs font-bold uppercase tracking-widest">পরবর্তী বোনাস</span>
+                          <span className="text-xs font-bold uppercase tracking-widest">পরবর্তী লাল খাম</span>
                         </div>
-                        <div className="text-3xl font-mono font-black text-white">{timeLeft}</div>
+                        <div className="text-3xl font-mono font-black text-red-500">{timeLeft}</div>
                       </div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">আগামীকাল আবার ফিরে আসুন!</p>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">১২ ঘণ্টা পর আবার ফিরে আসুন!</p>
                     </div>
                   )}
                 </div>

@@ -20,11 +20,13 @@ export interface GameState {
 export interface Bet {
   id: string;
   uid: string;
+  username?: string;
   game: string;
   betAmount: number;
   multiplier: number;
   payout: number;
   win: boolean;
+  status?: 'pending' | 'finished';
   timestamp: any;
 }
 
@@ -32,30 +34,19 @@ export type GameType =
   | 'home' 
   | 'promotion' 
   | 'invite' 
-  | 'leaderboard' 
   | 'chat'
   | 'member_center'
   | 'wallet'
+  | 'withdraw'
   | 'bet_history'
   | 'transaction_history'
   | 'support'
   | 'terms'
   | 'crash' 
-  | 'mines' 
-  | 'slots' 
-  | 'dice' 
-  | 'limbo' 
-  | 'plinko' 
-  | 'aviator' 
-  | 'live'
-  | 'sports'
-  | 'cards'
-  | 'esports'
-  | 'fish'
-  | 'lottery'
-  | 'cockfight'
-  | 'slots_cat'
-  | 'sports_cat'
-  | 'lottery_cat'
-  | 'esports_cat'
-  | 'admin';
+  | 'slots'
+  | 'admin'
+  | 'vip_club'
+  | 'share'
+  | 'leaderboard'
+  | 'notifications'
+  | 'daily_bonus';

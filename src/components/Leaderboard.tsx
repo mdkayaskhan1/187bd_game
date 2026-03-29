@@ -1,33 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Medal, User as UserIcon, TrendingUp, Crown } from 'lucide-react';
-import { db, collection, query, orderBy, limit, onSnapshot, handleFirestoreError, OperationType } from '../firebase';
+import { Trophy, Medal, Crown, TrendingUp, User } from 'lucide-react';
+import { db, collection, query, orderBy, limit, onSnapshot, OperationType, handleFirestoreError } from '../firebase';
 import { cn } from '../types';
 
-interface LeaderboardPlayer {
+interface LeaderboardEntry {
   uid: string;
+  username?: string;
   displayName: string;
-  balance: number;
   photoURL?: string;
+  totalWinnings: number;
+  rank: number;
 }
 
 export const Leaderboard: React.FC = () => {
-  const [players, setPlayers] = useState<LeaderboardPlayer[]>([]);
+  const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const q = query(
       collection(db, 'profiles'),
-      orderBy('balance', 'desc'),
-      limit(10)
+      orderBy('xp', 'desc'),
+      limit(20)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const topPlayers = snapshot.docs.map(doc => ({
+      const results = snapshot.docs.map((doc, index) => ({
         uid: doc.id,
-        ...doc.data()
-      })) as LeaderboardPlayer[];
-      setPlayers(topPlayers);
+        username: doc.data().username,
+        displayName: doc.data().displayName || doc.data().username || 'Anonymous',
+        photoURL: doc.data().photoURL,
+        totalWinnings: doc.data().xp || 0,
+        rank: index + 1
+      }));
+      setLeaders(results);
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'profiles');
@@ -37,94 +43,87 @@ export const Leaderboard: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-casino-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 rounded-2xl bg-casino-accent/20 text-casino-accent">
-          <Trophy size={32} />
+        <div className="w-12 h-12 bg-gradient-to-br from-[#D4AF37] to-[#FDE047] rounded-2xl flex items-center justify-center text-black shadow-[0_0_20px_rgba(212,175,55,0.4)]">
+          <Trophy size={28} />
         </div>
         <div>
-          <h2 className="text-3xl font-black uppercase tracking-tight">Leaderboard</h2>
-          <p className="text-slate-400 text-sm">Top players by current balance</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter">লিডারবোর্ড</h2>
+          <p className="text-[#D4AF37]/60 text-xs font-bold uppercase tracking-widest">সেরা ২০ জন বিজয়ী</p>
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {players.map((player, index) => (
-          <motion.div
-            key={player.uid}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={cn(
-              "glass-panel p-4 flex items-center gap-6 border-white/5 hover:border-white/10 transition-all group",
-              index === 0 && "border-casino-accent/30 bg-casino-accent/5"
-            )}
-          >
-            {/* Rank */}
-            <div className="w-12 flex items-center justify-center">
-              {index === 0 ? (
-                <Crown className="text-yellow-400" size={32} />
-              ) : index === 1 ? (
-                <Medal className="text-slate-300" size={28} />
-              ) : index === 2 ? (
-                <Medal className="text-amber-600" size={28} />
-              ) : (
-                <span className="text-2xl font-black text-slate-700">#{index + 1}</span>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-12 h-12 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin" />
+          <p className="text-[#D4AF37] font-bold animate-pulse">লোড হচ্ছে...</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {leaders.map((leader, index) => (
+            <motion.div
+              key={leader.uid}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className={cn(
+                "glass-panel p-4 flex items-center gap-4 group transition-all hover:scale-[1.01]",
+                index === 0 ? "bg-gradient-to-r from-[#D4AF37]/20 to-transparent border-[#D4AF37]/50 shadow-[0_0_30px_rgba(212,175,55,0.15)]" :
+                index === 1 ? "bg-gradient-to-r from-gray-400/10 to-transparent border-gray-400/30" :
+                index === 2 ? "bg-gradient-to-r from-amber-700/10 to-transparent border-amber-700/30" :
+                "bg-black/40 border-[#D4AF37]/10"
               )}
-            </div>
+            >
+              <div className="w-10 flex items-center justify-center">
+                {index === 0 ? <Crown className="text-[#FDE047]" size={24} /> :
+                 index === 1 ? <Medal className="text-gray-400" size={24} /> :
+                 index === 2 ? <Medal className="text-amber-700" size={24} /> :
+                 <span className="text-[#D4AF37]/40 font-black text-xl">#{leader.rank}</span>}
+              </div>
 
-            {/* Avatar */}
-            <div className="relative">
-              <div className="w-12 h-12 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden">
-                {player.photoURL ? (
-                  <img src={player.photoURL} alt={player.displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <div className="relative">
+                {leader.photoURL ? (
+                  <img src={leader.photoURL} alt={leader.displayName} className="w-12 h-12 rounded-xl object-cover border-2 border-[#D4AF37]/30" referrerPolicy="no-referrer" />
                 ) : (
-                  <UserIcon className="text-slate-500" size={24} />
+                  <div className="w-12 h-12 rounded-xl bg-[#1A1105] border-2 border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
+                    <User size={24} />
+                  </div>
+                )}
+                {index < 3 && (
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-[#D4AF37] to-[#FDE047] rounded-full flex items-center justify-center text-black text-[10px] font-black shadow-lg">
+                    {index + 1}
+                  </div>
                 )}
               </div>
-              {index === 0 && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-casino-bg" />
-              )}
-            </div>
 
-            {/* Info */}
-            <div className="flex-1">
-              <h3 className="font-bold text-lg text-white group-hover:text-casino-accent transition-colors">
-                {player.displayName || 'Anonymous Player'}
-              </h3>
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-widest">
-                <TrendingUp size={12} />
-                Active Player
+              <div className="flex-1">
+                <h3 className="text-white font-black uppercase tracking-tight group-hover:text-[#FDE047] transition-colors">
+                  {leader.username || leader.displayName}
+                </h3>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-[#D4AF37]/60 uppercase tracking-widest">
+                  <TrendingUp size={12} />
+                  টোটাল উইনিং
+                </div>
               </div>
-            </div>
 
-            {/* Balance */}
-            <div className="text-right">
-              <div className="text-xl font-mono font-black text-white">
-                {player.balance.toLocaleString()}
-                <span className="text-casino-accent ml-1 text-sm">BDT</span>
+              <div className="text-right">
+                <div className="text-[#FDE047] font-mono font-black text-lg drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+                  {leader.totalWinnings.toLocaleString()} BDT
+                </div>
               </div>
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">Current Balance</p>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
 
-        {players.length === 0 && (
-          <div className="text-center py-20 glass-panel border-dashed border-white/5">
-            <Trophy size={48} className="mx-auto text-slate-800 mb-4" />
-            <p className="text-slate-500 font-bold uppercase tracking-widest">No players found yet</p>
-          </div>
-        )}
-      </div>
+          {leaders.length === 0 && (
+            <div className="text-center py-20 glass-panel border-dashed border-[#D4AF37]/20">
+              <Trophy size={48} className="mx-auto text-[#D4AF37]/20 mb-4" />
+              <p className="text-[#D4AF37]/40 font-bold uppercase tracking-widest">এখনও কোনো ডেটা নেই</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
